@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Validador de Socios MB-Ticket</title>
-  <script src="https://unpkg.com/html5-qrcode"></script>
+  <script src="https://unpkg.com/html5-qrcode@2.3.4/html5-qrcode.min.js"></script>
   <style>
     :root {
       --primary: #2c3e50;
@@ -259,7 +259,6 @@
     let registros = JSON.parse(localStorage.getItem('registros')) || [];
     let scanner;
     let scanning = false;
-    let currentScan = null;
 
     // Elementos del DOM
     const csvFileInput = document.getElementById('csvFile');
@@ -306,75 +305,47 @@
       reader.readAsText(file, "UTF-8");
     }
 
-function iniciarEscaneo() {
-  if (scanning) return;
-  
-  Html5Qrcode.getCameras().then(devices => {
-    if (devices && devices.length) {
+    function iniciarEscaneo() {
+      if (scanning) return;
+      
       scanner = new Html5Qrcode("reader");
       
-      // Configuración mejorada de la cámara
-      const cameraConfig = {
+      const config = {
         fps: 10,
-        qrbox: { width: 250, height: 250 },
-        rememberLastUsedCamera: true,
-        supportedScanTypes: [Html5QrcodeScanType.SCAN_TYPE_CAMERA]
+        qrbox: 250,
+        disableFlip: true
       };
 
-      // Intento con cámara trasera primero
       scanner.start(
         { facingMode: "environment" },
-        cameraConfig,
-        procesarQR,
+        config,
+        (qrCodeMessage) => {
+          scanner.pause();
+          procesarQR(qrCodeMessage);
+          
+          setTimeout(() => {
+            scanner.resume().catch(err => {
+              console.log("Error al reanudar:", err);
+              iniciarEscaneo();
+            });
+          }, 2000);
+        },
         (error) => {
-          console.warn("Error con cámara trasera:", error);
-          // Fallback a cámara frontal
-          scanner.start(
-            { facingMode: "user" },
-            cameraConfig,
-            procesarQR,
-            (err) => {
-              console.error("Error con cámara frontal:", err);
-              mostrarErrorCamara();
-            }
-          );
+          console.log("Error de escaneo:", error);
         }
       ).then(() => {
         scanning = true;
-        console.log("Escáner iniciado correctamente");
-      }).catch(finalError => {
-        console.error("Error definitivo:", finalError);
-        mostrarErrorCamara();
+      }).catch(err => {
+        console.error("Error al iniciar:", err);
+        alert("Error al iniciar cámara: " + err.message);
       });
-    } else {
-      mostrarErrorCamara("No se detectaron cámaras");
     }
-  }).catch(deviceError => {
-    console.error("Error al listar cámaras:", deviceError);
-    mostrarErrorCamara();
-  });
-}
-
-function mostrarErrorCamara(mensaje = "Error al acceder a la cámara") {
-  alert(`${mensaje}. Por favor:\n1. Verifica los permisos\n2. Prueba en otro dispositivo\n3. Usa un navegador actualizado`);
-  scanning = false;
-}
 
     function procesarQR(qrCodeMessage) {
-      // Evitar procesar el mismo código múltiples veces
-      if (currentScan === qrCodeMessage) return;
-      currentScan = qrCodeMessage;
-      
       const dni = extraerDniDesdeUrl(qrCodeMessage);
       const socio = socios.find(s => s.dni === dni);
       const registroExistente = registros.find(r => r.dni === dni && esHoy(r.fecha));
       
-      // Pausar el escáner
-      if (scanner) {
-        scanner.pause().catch(() => {});
-      }
-
-      // Mostrar resultado
       if (registroExistente) {
         mostrarResultado('error', '❌ QR ya ingresó', `DNI: ${dni}<br>${registroExistente.fecha}`);
         errorSound.play();
@@ -394,17 +365,6 @@ function mostrarErrorCamara(mensaje = "Error al acceder a la cámara") {
         mostrarResultado('error', '❌ No es socio', `Código escaneado: ${qrCodeMessage}`);
         errorSound.play();
       }
-
-      // Volver a escanear después de 2 segundos
-      setTimeout(() => {
-        resultDiv.style.display = 'none';
-        currentScan = null;
-        if (scanner) {
-          scanner.resume().catch(() => {
-            iniciarEscaneo();
-          });
-        }
-      }, 2000);
     }
 
     function mostrarResultado(tipo, icono, mensaje, detalles = '') {
@@ -414,7 +374,6 @@ function mostrarErrorCamara(mensaje = "Error al acceder a la cámara") {
       messageDiv.innerHTML = mensaje;
       detailsDiv.innerHTML = detalles;
       
-      // Scroll suave al resultado
       resultDiv.scrollIntoView({ behavior: 'smooth', block: 'center' });
     }
 
