@@ -8,9 +8,9 @@
   <style>
     :root {
       --primary: #2c3e50;
-      --secondary: #2980b9; /* Azul */
-      --success: #27ae60; /* Verde */
-      --danger: #e74c3c; /* Rojo */
+      --secondary: #2980b9;
+      --success: #27ae60;
+      --danger: #e74c3c;
       --light: #ecf0f1;
       --dark: #2c3e50;
     }
@@ -114,15 +114,15 @@
     }
     
     #exportBtn {
-      background: var(--secondary); /* Azul */
+      background: var(--secondary);
     }
     
     #clearBtn {
-      background: var(--danger); /* Rojo */
+      background: var(--danger);
     }
     
     #manualRegisterBtn {
-      background: var(--success); /* Verde */
+      background: var(--success);
     }
     
     .search-box {
@@ -133,12 +133,43 @@
       box-shadow: 0 2px 5px rgba(0,0,0,0.1);
     }
     
-    .search-box input {
+    .search-results {
+      position: relative;
+    }
+    
+    #searchInput {
       width: 100%;
       padding: 10px;
       margin-bottom: 10px;
       border: 1px solid #ddd;
       border-radius: 5px;
+    }
+    
+    #resultsList {
+      position: absolute;
+      width: 100%;
+      max-height: 200px;
+      overflow-y: auto;
+      background: white;
+      border: 1px solid #ddd;
+      border-radius: 5px;
+      z-index: 1000;
+      display: none;
+      box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+    }
+    
+    .result-item {
+      padding: 10px;
+      cursor: pointer;
+      border-bottom: 1px solid #eee;
+    }
+    
+    .result-item:hover {
+      background-color: #f5f5f5;
+    }
+    
+    .result-item strong {
+      color: var(--secondary);
     }
     
     #registros {
@@ -165,8 +196,11 @@
 
     <div class="search-box">
       <h3>Búsqueda Manual</h3>
-      <input type="text" id="searchInput" placeholder="Buscar por DNI o nombre">
-      <button id="manualRegisterBtn">Registrar Manualmente</button>
+      <div class="search-results">
+        <input type="text" id="searchInput" placeholder="Buscar por DNI o nombre (mínimo 3 caracteres)">
+        <div id="resultsList"></div>
+      </div>
+      <button id="manualRegisterBtn" disabled>Registrar Manualmente</button>
     </div>
 
     <div id="reader"></div>
@@ -195,11 +229,13 @@
     let socios = [];
     let registros = JSON.parse(localStorage.getItem('registros')) || [];
     let scanner;
+    let selectedSocio = null;
 
     // Elementos del DOM
     const csvFile = document.getElementById('csvFile');
     const csvStatus = document.getElementById('csvStatus');
     const searchInput = document.getElementById('searchInput');
+    const resultsList = document.getElementById('resultsList');
     const manualRegisterBtn = document.getElementById('manualRegisterBtn');
     const exportBtn = document.getElementById('exportBtn');
     const clearBtn = document.getElementById('clearBtn');
@@ -207,6 +243,7 @@
 
     // Eventos
     csvFile.addEventListener('change', cargarCSV);
+    searchInput.addEventListener('input', buscarSocios);
     manualRegisterBtn.addEventListener('click', registrarManual);
     exportBtn.addEventListener('click', exportarRegistros);
     clearBtn.addEventListener('click', limpiarRegistros);
@@ -218,24 +255,112 @@
 
       const reader = new FileReader();
       reader.onload = function(e) {
-        const content = e.target.result;
-        const lines = content.split(/\r?\n/).filter(line => line.trim() !== '');
-        
-        socios = lines.map(line => {
-          const [nombre, apellido, dni] = line.split(';');
-          return {
-            nombre: `${nombre.trim()} ${apellido.trim()}`,
-            dni: dni.trim()
-          };
-        });
+        try {
+          const content = e.target.result;
+          const lines = content.split(/\r?\n/).filter(line => line.trim() !== '');
+          
+          socios = lines.map(line => {
+            const [nombre, apellido, dni] = line.split(';');
+            return {
+              nombre: `${nombre.trim()} ${apellido.trim()}`,
+              dni: dni.trim()
+            };
+          });
 
-        csvStatus.textContent = `Archivo cargado: ${socios.length} socios`;
-        csvStatus.style.color = "green";
-        exportBtn.disabled = false;
-        iniciarEscaneo();
+          csvStatus.textContent = `✅ Archivo cargado: ${socios.length} socios`;
+          csvStatus.style.color = "green";
+          exportBtn.disabled = false;
+          iniciarEscaneo();
+
+        } catch (error) {
+          csvStatus.textContent = "❌ Error: El archivo debe tener formato: Nombre;Apellido;DNI";
+          csvStatus.style.color = "red";
+          console.error("Error al procesar CSV:", error);
+        }
+      };
+      
+      reader.onerror = () => {
+        csvStatus.textContent = "❌ Error al leer el archivo";
+        csvStatus.style.color = "red";
       };
       
       reader.readAsText(file);
+    }
+
+    // Buscar socios (autocompletado)
+    function buscarSocios() {
+      const query = searchInput.value.trim().toLowerCase();
+      resultsList.innerHTML = '';
+      selectedSocio = null;
+      manualRegisterBtn.disabled = true;
+
+      if (query.length < 3) {
+        resultsList.style.display = 'none';
+        return;
+      }
+
+      const resultados = socios.filter(socio => 
+        socio.dni.includes(query) || 
+        socio.nombre.toLowerCase().includes(query)
+      );
+
+      if (resultados.length > 0) {
+        resultsList.innerHTML = resultados.map(socio => `
+          <div class="result-item" data-dni="${socio.dni}">
+            <strong>${socio.nombre}</strong><br>
+            DNI: ${socio.dni}
+          </div>
+        `).join('');
+        resultsList.style.display = 'block';
+        
+        document.querySelectorAll('.result-item').forEach(item => {
+          item.addEventListener('click', function() {
+            const dni = this.getAttribute('data-dni');
+            selectedSocio = socios.find(s => s.dni === dni);
+            searchInput.value = selectedSocio.nombre;
+            resultsList.style.display = 'none';
+            manualRegisterBtn.disabled = false;
+          });
+        });
+      } else {
+        resultsList.innerHTML = '<div class="result-item">No se encontraron socios</div>';
+        resultsList.style.display = 'block';
+      }
+    }
+
+    // Registrar manualmente
+    function registrarManual() {
+      if (!selectedSocio) {
+        mostrarResultado('error', '❌ Error', 'Seleccione un socio de la lista');
+        document.getElementById('errorSound').play();
+        return;
+      }
+
+      const registroExistente = registros.find(r => r.dni === selectedSocio.dni && esHoy(r.fecha));
+      if (registroExistente) {
+        mostrarResultado('error', '❌ Ya ingresó', `DNI: ${selectedSocio.dni}`);
+        document.getElementById('errorSound').play();
+        return;
+      }
+
+      const registro = {
+        dni: selectedSocio.dni,
+        nombre: selectedSocio.nombre,
+        fecha: new Date().toLocaleString()
+      };
+      
+      registros.push(registro);
+      localStorage.setItem('registros', JSON.stringify(registros));
+      actualizarRegistros();
+      
+      mostrarResultado('success', '✅ Registrado', selectedSocio.nombre);
+      document.getElementById('successSound').play();
+      
+      // Limpiar búsqueda
+      searchInput.value = '';
+      resultsList.style.display = 'none';
+      selectedSocio = null;
+      manualRegisterBtn.disabled = true;
     }
 
     // Iniciar escáner
@@ -259,7 +384,7 @@
 
     // Procesar QR
     function procesarQR(qrContent) {
-      const dni = qrContent.split('=')[1] || qrContent; // Extrae DNI de URLs
+      const dni = qrContent.split('=')[1] || qrContent;
       const socio = socios.find(s => s.dni === dni);
       
       if (!socio) {
@@ -282,37 +407,7 @@
       document.getElementById('successSound').play();
     }
 
-    // Búsqueda manual
-    function registrarManual() {
-      const query = searchInput.value.trim();
-      if (!query) return;
-
-      const socio = socios.find(s => 
-        s.dni === query || s.nombre.toLowerCase().includes(query.toLowerCase())
-      );
-
-      if (!socio) {
-        mostrarResultado('error', '❌ No encontrado', query);
-        document.getElementById('errorSound').play();
-        return;
-      }
-
-      const registro = {
-        dni: socio.dni,
-        nombre: socio.nombre,
-        fecha: new Date().toLocaleString()
-      };
-      
-      registros.push(registro);
-      localStorage.setItem('registros', JSON.stringify(registros));
-      actualizarRegistros();
-      
-      mostrarResultado('success', '✅ Registrado', socio.nombre);
-      document.getElementById('successSound').play();
-      searchInput.value = '';
-    }
-
-    // Actualizar lista de registros
+    // Actualizar registros
     function actualizarRegistros() {
       const hoy = new Date().toLocaleDateString();
       const registrosHoy = registros.filter(r => 
@@ -374,6 +469,15 @@
       setTimeout(() => {
         result.style.display = 'none';
       }, 2000);
+    }
+
+    // Verificar si es hoy
+    function esHoy(fechaStr) {
+      const fechaRegistro = new Date(fechaStr);
+      const hoy = new Date();
+      return fechaRegistro.getDate() === hoy.getDate() && 
+             fechaRegistro.getMonth() === hoy.getMonth() && 
+             fechaRegistro.getFullYear() === hoy.getFullYear();
     }
   </script>
 </body>
