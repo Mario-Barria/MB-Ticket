@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Validador de Socios MB-Ticket</title>
+  <title>Control de Acceso - Estadio</title>
   <script src="https://unpkg.com/html5-qrcode@2.3.4/html5-qrcode.min.js"></script>
   <style>
     :root {
@@ -11,6 +11,7 @@
       --secondary: #2980b9;
       --success: #27ae60;
       --danger: #e74c3c;
+      --info: #3498db;
       --light: #ecf0f1;
       --dark: #2c3e50;
     }
@@ -24,7 +25,7 @@
     }
     
     .container {
-      max-width: 800px;
+      max-width: 1000px;
       margin: 0 auto;
     }
     
@@ -38,7 +39,7 @@
       margin-bottom: 10px;
     }
     
-    .file-upload {
+    .panel {
       background: white;
       padding: 15px;
       border-radius: 8px;
@@ -46,20 +47,32 @@
       box-shadow: 0 2px 5px rgba(0,0,0,0.1);
     }
     
-    #csvFile {
-      display: none;
+    .panel-title {
+      margin-top: 0;
+      color: var(--primary);
+      border-bottom: 1px solid #eee;
+      padding-bottom: 10px;
+    }
+    
+    .file-upload {
+      margin-bottom: 15px;
     }
     
     .file-upload label {
+      display: inline-block;
       background: var(--secondary);
       color: white;
       padding: 10px 15px;
       border-radius: 5px;
       cursor: pointer;
-      display: inline-block;
+      margin-right: 10px;
     }
     
-    #csvStatus {
+    .file-upload input {
+      display: none;
+    }
+    
+    .file-status {
       margin-top: 10px;
       font-weight: bold;
     }
@@ -95,6 +108,12 @@
       border: 1px solid #f5c6cb;
     }
     
+    .info {
+      background-color: #d1ecf1;
+      color: #0c5460;
+      border: 1px solid #bee5eb;
+    }
+    
     .icon {
       font-size: 40px;
       margin-bottom: 10px;
@@ -111,6 +130,12 @@
       width: 100%;
       max-width: 300px;
       display: block;
+      transition: all 0.3s;
+    }
+    
+    button:hover {
+      opacity: 0.9;
+      transform: translateY(-2px);
     }
     
     #exportBtn {
@@ -125,12 +150,12 @@
       background: var(--success);
     }
     
+    #importWebBtn {
+      background: var(--info);
+    }
+    
     .search-box {
-      background: white;
-      padding: 15px;
-      border-radius: 8px;
-      margin-bottom: 20px;
-      box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+      margin-bottom: 15px;
     }
     
     .search-results {
@@ -172,12 +197,59 @@
       color: var(--secondary);
     }
     
-    #registros {
-      background: white;
-      padding: 15px;
-      border-radius: 8px;
+    #registros-list {
+      max-height: 300px;
+      overflow-y: auto;
+    }
+    
+    .registro-item {
+      padding: 10px 0;
+      border-bottom: 1px solid #eee;
+    }
+    
+    .registro-item:last-child {
+      border-bottom: none;
+    }
+    
+    .tabs {
+      display: flex;
       margin-bottom: 20px;
-      box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+      border-bottom: 1px solid #ddd;
+    }
+    
+    .tab {
+      padding: 10px 20px;
+      cursor: pointer;
+      background: #f1f1f1;
+      margin-right: 5px;
+      border-radius: 5px 5px 0 0;
+    }
+    
+    .tab.active {
+      background: var(--secondary);
+      color: white;
+    }
+    
+    .tab-content {
+      display: none;
+    }
+    
+    .tab-content.active {
+      display: block;
+    }
+    
+    @media (max-width: 768px) {
+      .container {
+        padding: 10px;
+      }
+      
+      .panel {
+        padding: 10px;
+      }
+      
+      button {
+        padding: 10px 15px;
+      }
     }
   </style>
 </head>
@@ -185,73 +257,123 @@
   <div class="container">
     <header>
       <img src="gimnasia y esgrima.jpg" alt="Logo" class="logo">
-      <h1>Validador de Socios</h1>
+      <h1>Control de Acceso - Estadio</h1>
     </header>
 
-    <div class="file-upload">
-      <label for="csvFile">Seleccionar archivo CSV</label>
-      <input type="file" id="csvFile" accept=".csv">
-      <p id="csvStatus">Esperando archivo CSV...</p>
+    <div class="tabs">
+      <div class="tab active" data-tab="ingreso">Registro de Ingresos</div>
+      <div class="tab" data-tab="importar">Importar Entradas Web</div>
     </div>
 
-    <div class="search-box">
-      <h3>Búsqueda Manual</h3>
-      <div class="search-results">
-        <input type="text" id="searchInput" placeholder="Buscar por DNI o nombre (mínimo 3 caracteres)">
-        <div id="resultsList"></div>
+    <!-- Pestaña de Ingreso -->
+    <div id="ingreso" class="tab-content active">
+      <div class="panel">
+        <h3 class="panel-title">Carga de Socios</h3>
+        <div class="file-upload">
+          <label for="csvFile">Seleccionar listado de socios (CSV)</label>
+          <input type="file" id="csvFile" accept=".csv">
+          <p id="csvStatus" class="file-status">Esperando archivo CSV...</p>
+        </div>
       </div>
-      <button id="manualRegisterBtn" disabled>Registrar Manualmente</button>
+
+      <div class="panel">
+        <h3 class="panel-title">Búsqueda Manual</h3>
+        <div class="search-box">
+          <div class="search-results">
+            <input type="text" id="searchInput" placeholder="Buscar por DNI o nombre (mínimo 3 caracteres)">
+            <div id="resultsList"></div>
+          </div>
+          <button id="manualRegisterBtn" disabled>Registrar Ingreso Manual</button>
+        </div>
+      </div>
+
+      <div class="panel">
+        <h3 class="panel-title">Escaneo de Carnets</h3>
+        <div id="reader"></div>
+        <div id="result">
+          <div id="icon" class="icon"></div>
+          <div id="message"></div>
+        </div>
+      </div>
     </div>
 
-    <div id="reader"></div>
-    
-    <div id="result">
-      <div id="icon" class="icon"></div>
-      <div id="message"></div>
+    <!-- Pestaña de Importación -->
+    <div id="importar" class="tab-content">
+      <div class="panel">
+        <h3 class="panel-title">Importar Entradas Web</h3>
+        <div class="file-upload">
+          <label for="webSalesFile">Seleccionar archivo de ventas web (Excel/CSV)</label>
+          <input type="file" id="webSalesFile" accept=".csv,.xlsx,.xls">
+          <p id="webSalesStatus" class="file-status">Esperando archivo de ventas web...</p>
+        </div>
+        <button id="importWebBtn" disabled>Importar Entradas</button>
+        <p id="importSummary" style="margin-top: 15px;"></p>
+      </div>
     </div>
 
-    <div id="registros">
-      <h3>Registros de Hoy</h3>
+    <div class="panel">
+      <h3 class="panel-title">Registros de Hoy</h3>
       <div id="registros-list">
         <p>No hay registros aún.</p>
       </div>
+      <button id="exportBtn">Generar Informe</button>
+      <button id="clearBtn">Limpiar Registros</button>
     </div>
-
-    <button id="exportBtn">Generar Informe</button>
-    <button id="clearBtn">Limpiar Registros</button>
   </div>
 
   <audio id="successSound" src="https://assets.mixkit.co/sfx/preview/mixkit-correct-answer-tone-2870.mp3"></audio>
   <audio id="errorSound" src="https://assets.mixkit.co/sfx/preview/mixkit-wrong-answer-fail-notification-946.mp3"></audio>
 
+  <!-- Biblioteca para leer Excel -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+
   <script>
     // Variables globales
     let socios = [];
     let registros = JSON.parse(localStorage.getItem('registros')) || [];
+    let entradasWeb = JSON.parse(localStorage.getItem('entradasWeb')) || [];
     let scanner;
     let selectedSocio = null;
-    let ultimoQRLeido = null;
-    let tiempoUltimoEscaneo = 0;
+    let ultimoEscaneo = null;
 
     // Elementos del DOM
     const csvFile = document.getElementById('csvFile');
     const csvStatus = document.getElementById('csvStatus');
+    const webSalesFile = document.getElementById('webSalesFile');
+    const webSalesStatus = document.getElementById('webSalesStatus');
+    const importWebBtn = document.getElementById('importWebBtn');
+    const importSummary = document.getElementById('importSummary');
     const searchInput = document.getElementById('searchInput');
     const resultsList = document.getElementById('resultsList');
     const manualRegisterBtn = document.getElementById('manualRegisterBtn');
     const exportBtn = document.getElementById('exportBtn');
     const clearBtn = document.getElementById('clearBtn');
     const registrosList = document.getElementById('registros-list');
+    const tabs = document.querySelectorAll('.tab');
+    const tabContents = document.querySelectorAll('.tab-content');
 
     // Eventos
-    csvFile.addEventListener('change', cargarCSV);
+    csvFile.addEventListener('change', cargarSociosCSV);
+    webSalesFile.addEventListener('change', cargarEntradasWeb);
+    importWebBtn.addEventListener('click', importarEntradasWeb);
     searchInput.addEventListener('input', buscarSocios);
     manualRegisterBtn.addEventListener('click', registrarManual);
     exportBtn.addEventListener('click', exportarRegistros);
     clearBtn.addEventListener('click', limpiarRegistros);
 
-    // Cargar CSV
-    function cargarCSV(event) {
+    // Tabs
+    tabs.forEach(tab => {
+      tab.addEventListener('click', () => {
+        tabs.forEach(t => t.classList.remove('active'));
+        tabContents.forEach(c => c.classList.remove('active'));
+        
+        tab.classList.add('active');
+        document.getElementById(tab.dataset.tab).classList.add('active');
+      });
+    });
+
+    // Cargar socios desde CSV
+    function cargarSociosCSV(event) {
       const file = event.target.files[0];
       if (!file) return;
 
@@ -269,7 +391,7 @@
             };
           });
 
-          csvStatus.textContent = `✅ Archivo cargado: ${socios.length} socios`;
+          csvStatus.textContent = `✅ Socios cargados: ${socios.length}`;
           csvStatus.style.color = "green";
           exportBtn.disabled = false;
           iniciarEscaneo();
@@ -287,6 +409,91 @@
       };
       
       reader.readAsText(file);
+    }
+
+    // Cargar entradas web desde Excel/CSV
+    function cargarEntradasWeb(event) {
+      const file = event.target.files[0];
+      if (!file) return;
+
+      const reader = new FileReader();
+      reader.onload = function(e) {
+        try {
+          const data = new Uint8Array(e.target.result);
+          const workbook = XLSX.read(data, { type: 'array' });
+          const firstSheet = workbook.Sheets[workbook.SheetNames[0]];
+          const jsonData = XLSX.utils.sheet_to_json(firstSheet);
+          
+          // Suponemos que el Excel tiene columna "DNI"
+          const dnis = jsonData.map(item => item.DNI?.toString().trim()).filter(Boolean);
+          
+          webSalesStatus.textContent = `✅ Entradas web cargadas: ${dnis.length}`;
+          webSalesStatus.style.color = "green";
+          importWebBtn.disabled = false;
+          
+          // Guardar temporalmente para importación
+          entradasWeb = dnis;
+
+        } catch (error) {
+          webSalesStatus.textContent = "❌ Error: El archivo debe tener columna 'DNI'";
+          webSalesStatus.style.color = "red";
+          console.error("Error al procesar archivo:", error);
+        }
+      };
+      
+      reader.onerror = () => {
+        webSalesStatus.textContent = "❌ Error al leer el archivo";
+        webSalesStatus.style.color = "red";
+      };
+      
+      reader.readAsArrayBuffer(file);
+    }
+
+    // Importar entradas web al sistema
+    function importarEntradasWeb() {
+      if (entradasWeb.length === 0) {
+        mostrarResultado('error', '❌ Error', 'No hay entradas web para importar');
+        return;
+      }
+
+      const hoy = new Date().toLocaleDateString();
+      let nuevosRegistros = 0;
+      let duplicados = 0;
+
+      entradasWeb.forEach(dni => {
+        // Verificar si ya está registrado hoy
+        const yaRegistrado = registros.some(r => 
+          r.dni === dni && 
+          new Date(r.fecha).toLocaleDateString() === hoy
+        );
+
+        if (!yaRegistrado) {
+          registros.push({
+            dni: dni,
+            nombre: "Entrada Web",
+            fecha: new Date().toLocaleString(),
+            tipo: "web"
+          });
+          nuevosRegistros++;
+        } else {
+          duplicados++;
+        }
+      });
+
+      localStorage.setItem('registros', JSON.stringify(registros));
+      actualizarRegistros();
+      
+      importSummary.innerHTML = `
+        <strong>Resumen de importación:</strong><br>
+        ✅ Nuevos registros: ${nuevosRegistros}<br>
+        ⚠️ Duplicados: ${duplicados}<br>
+        📅 Total registros hoy: ${registros.filter(r => esHoy(r.fecha)).length}
+      `;
+      
+      mostrarResultado('success', '✅ Importación completada', `
+        Se importaron ${nuevosRegistros} entradas web<br>
+        ${duplicados} ya estaban registradas
+      `);
     }
 
     // Buscar socios (autocompletado)
@@ -349,12 +556,11 @@
       });
     }
 
-    // Procesar QR (VERSIÓN CORREGIDA)
+    // Procesar QR
     function procesarQR(qrContent) {
-      const ahora = Date.now();
-      if (qrContent === ultimoQRLeido && (ahora - tiempoUltimoEscaneo) < 3000) {
-        return;
-      }
+      // Evitar procesar el mismo código consecutivamente
+      if (ultimoEscaneo === qrContent) return;
+      ultimoEscaneo = qrContent;
 
       const dni = qrContent.split('=')[1] || qrContent;
       const socio = socios.find(s => s.dni === dni);
@@ -365,12 +571,18 @@
         return;
       }
 
-      const registroExistente = registros.find(r => r.dni === dni && esHoy(r.fecha));
+      // Verificar si ya ingresó hoy
+      const hoy = new Date().toLocaleDateString();
+      const registroExistente = registros.find(r => 
+        r.dni === dni && 
+        new Date(r.fecha).toLocaleDateString() === hoy
+      );
+
       if (registroExistente) {
         mostrarResultado('error', '❌ Ya ingresó hoy', `
           ${socio.nombre}<br>
           DNI: ${dni}<br>
-          Hora anterior: ${registroExistente.fecha.split(',')[1].trim()}
+          Hora: ${registroExistente.fecha.split(',')[1].trim()}
         `);
         document.getElementById('errorSound').play();
         return;
@@ -379,7 +591,8 @@
       const registro = {
         dni: dni,
         nombre: socio.nombre,
-        fecha: new Date().toLocaleString()
+        fecha: new Date().toLocaleString(),
+        tipo: "carnet"
       };
       
       registros.push(registro);
@@ -391,9 +604,6 @@
         DNI: ${dni}
       `);
       document.getElementById('successSound').play();
-
-      ultimoQRLeido = qrContent;
-      tiempoUltimoEscaneo = ahora;
     }
 
     // Registrar manualmente
@@ -404,12 +614,17 @@
         return;
       }
 
-      const registroExistente = registros.find(r => r.dni === selectedSocio.dni && esHoy(r.fecha));
+      const hoy = new Date().toLocaleDateString();
+      const registroExistente = registros.find(r => 
+        r.dni === selectedSocio.dni && 
+        new Date(r.fecha).toLocaleDateString() === hoy
+      );
+
       if (registroExistente) {
         mostrarResultado('error', '❌ Ya ingresó hoy', `
           ${selectedSocio.nombre}<br>
           DNI: ${selectedSocio.dni}<br>
-          Hora anterior: ${registroExistente.fecha.split(',')[1].trim()}
+          Hora: ${registroExistente.fecha.split(',')[1].trim()}
         `);
         document.getElementById('errorSound').play();
         return;
@@ -418,7 +633,8 @@
       const registro = {
         dni: selectedSocio.dni,
         nombre: selectedSocio.nombre,
-        fecha: new Date().toLocaleString()
+        fecha: new Date().toLocaleString(),
+        tipo: "manual"
       };
       
       registros.push(registro);
@@ -437,13 +653,17 @@
 
     // Actualizar registros
     function actualizarRegistros() {
-      const registrosHoy = registros.filter(r => esHoy(r.fecha));
+      const hoy = new Date().toLocaleDateString();
+      const registrosHoy = registros.filter(r => 
+        new Date(r.fecha).toLocaleDateString() === hoy
+      );
 
       registrosList.innerHTML = registrosHoy.length > 0
         ? registrosHoy.map(r => `
-            <div style="padding: 8px 0; border-bottom: 1px solid #eee;">
+            <div class="registro-item">
               <strong>${r.fecha}</strong><br>
-              ${r.nombre} (${r.dni})
+              ${r.nombre} (DNI: ${r.dni})<br>
+              <small>Tipo: ${r.tipo === 'web' ? 'Entrada Web' : r.tipo === 'manual' ? 'Registro Manual' : 'Carnet'}</small>
             </div>
           `).join('')
         : '<p>No hay registros aún.</p>';
@@ -451,25 +671,31 @@
 
     // Exportar registros
     function exportarRegistros() {
-      const registrosHoy = registros.filter(r => esHoy(r.fecha));
+      const hoy = new Date().toLocaleDateString();
+      const registrosHoy = registros.filter(r => 
+        new Date(r.fecha).toLocaleDateString() === hoy
+      );
 
-      let csv = "Fecha,Nombre,DNI\n";
+      let csv = "Fecha,Nombre,DNI,Tipo\n";
       registrosHoy.forEach(r => {
-        csv += `"${r.fecha}","${r.nombre}","${r.dni}"\n`;
+        csv += `"${r.fecha}","${r.nombre}","${r.dni}","${r.tipo}"\n`;
       });
 
       const blob = new Blob([csv], { type: 'text/csv' });
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
-      a.download = `registros_${new Date().toLocaleDateString().replace(/\//g, '-')}.csv`;
+      a.download = `registros_${hoy.replace(/\//g, '-')}.csv`;
       a.click();
     }
 
     // Limpiar registros
     function limpiarRegistros() {
       if (confirm('¿Borrar todos los registros de hoy?')) {
-        registros = registros.filter(r => !esHoy(r.fecha));
+        const hoy = new Date().toLocaleDateString();
+        registros = registros.filter(r => 
+          new Date(r.fecha).toLocaleDateString() !== hoy
+        );
         localStorage.setItem('registros', JSON.stringify(registros));
         actualizarRegistros();
       }
