@@ -384,45 +384,36 @@
 
     // Procesar QR
     function procesarQR(qrContent) {
-      const dni = qrContent.split('=')[1] || qrContent;
-      const socio = socios.find(s => s.dni === dni);
-      
-      if (!socio) {
-        mostrarResultado('error', '❌ No registrado', `DNI: ${dni}`);
-        document.getElementById('errorSound').play();
-        return;
-      }
+  const dni = qrContent.split('=')[1] || qrContent; // Extrae DNI de URLs
+  const socio = socios.find(s => s.dni === dni);
+  
+  if (!socio) {
+    mostrarResultado('error', '❌ No registrado', `DNI: ${dni}`);
+    document.getElementById('errorSound').play();
+    return;
+  }
 
-      const registro = {
-        dni: dni,
-        nombre: socio.nombre,
-        fecha: new Date().toLocaleString()
-      };
-      
-      registros.push(registro);
-      localStorage.setItem('registros', JSON.stringify(registros));
-      actualizarRegistros();
-      
-      mostrarResultado('success', '✅ Registrado', socio.nombre);
-      document.getElementById('successSound').play();
-    }
+  // Verificar si ya ingresó hoy (MODIFICACIÓN CLAVE)
+  const registroExistente = registros.find(r => r.dni === dni && esHoy(r.fecha));
+  if (registroExistente) {
+    mostrarResultado('error', '❌ Ya ingresó', `DNI: ${dni}<br>${registroExistente.fecha}`);
+    document.getElementById('errorSound').play();
+    return;
+  }
 
-    // Actualizar registros
-    function actualizarRegistros() {
-      const hoy = new Date().toLocaleDateString();
-      const registrosHoy = registros.filter(r => 
-        new Date(r.fecha).toLocaleDateString() === hoy
-      );
-
-      registrosList.innerHTML = registrosHoy.length > 0
-        ? registrosHoy.map(r => `
-            <div style="padding: 8px 0; border-bottom: 1px solid #eee;">
-              <strong>${r.fecha}</strong><br>
-              ${r.nombre} (${r.dni})
-            </div>
-          `).join('')
-        : '<p>No hay registros aún.</p>';
-    }
+  const registro = {
+    dni: dni,
+    nombre: socio.nombre,
+    fecha: new Date().toLocaleString()
+  };
+  
+  registros.push(registro);
+  localStorage.setItem('registros', JSON.stringify(registros));
+  actualizarRegistros();
+  
+  mostrarResultado('success', '✅ Registrado', socio.nombre);
+  document.getElementById('successSound').play();
+}
 
     // Exportar registros
     function exportarRegistros() {
