@@ -2,29 +2,118 @@
 <html lang="es">
 <head>
   <meta charset="UTF-8">
-  <title>Validador de Socios</title>
+  <title>Validador de Socios MB-Ticket</title>
   <script src="https://unpkg.com/html5-qrcode"></script>
   <style>
-    body { font-family: sans-serif; text-align: center; padding: 20px; }
-    #reader { width: 300px; margin: 20px auto; }
-    #status { margin-top: 20px; font-size: 20px; font-weight: bold; }
-    #status.ok { color: green; }
-    #status.error { color: red; }
+    body {
+      font-family: sans-serif;
+      text-align: center;
+      padding: 20px;
+      max-width: 800px;
+      margin: 0 auto;
+    }
+    #reader { width: 100%; max-width: 500px; margin: 20px auto; }
+    #result {
+      margin: 20px auto;
+      padding: 20px;
+      border-radius: 10px;
+      font-size: 24px;
+      display: none;
+    }
+    .success {
+      background-color: #d4edda;
+      color: #155724;
+      border: 2px solid #c3e6cb;
+    }
+    .error {
+      background-color: #f8d7da;
+      color: #721c24;
+      border: 2px solid #f5c6cb;
+    }
+    .icon {
+      font-size: 60px;
+      margin-bottom: 15px;
+    }
+    button {
+      padding: 10px 20px;
+      background-color: #007bff;
+      color: white;
+      border: none;
+      border-radius: 5px;
+      cursor: pointer;
+      margin: 10px;
+      font-size: 16px;
+    }
+    button:hover {
+      background-color: #0069d9;
+    }
+    #controls {
+      margin: 20px 0;
+    }
+    #registros {
+      margin-top: 30px;
+      text-align: left;
+      border: 1px solid #ddd;
+      padding: 10px;
+      border-radius: 5px;
+      max-height: 200px;
+      overflow-y: auto;
+    }
   </style>
 </head>
 <body>
-  <h1>Validador de Socios</h1>
+  <h1>Validador de Socios MB-Ticket</h1>
 
-  <input type="file" id="csvFile" accept=".csv">
-  <p id="csvStatus">Esperando archivo...</p>
+  <div id="controls">
+    <input type="file" id="csvFile" accept=".csv">
+    <p id="csvStatus">Esperando archivo CSV...</p>
+    <button id="exportBtn" disabled>Generar Informe</button>
+  </div>
 
-  <div id="reader" style="display:none;"></div>
-  <p id="status"></p>
+  <div id="reader"></div>
+  
+  <div id="result">
+    <div id="icon" class="icon"></div>
+    <div id="message"></div>
+    <div id="details"></div>
+  </div>
+
+  <h3>Registros de Ingreso</h3>
+  <div id="registros"></div>
+
+  <audio id="successSound" src="https://assets.mixkit.co/sfx/preview/mixkit-correct-answer-tone-2870.mp3" preload="auto"></audio>
+  <audio id="errorSound" src="https://assets.mixkit.co/sfx/preview/mixkit-wrong-answer-fail-notification-946.mp3" preload="auto"></audio>
 
   <script>
+    // Variables globales
     let socios = [];
+    let registros = JSON.parse(localStorage.getItem('registros')) || [];
+    let scanner;
+    let scanning = false;
 
-    document.getElementById("csvFile").addEventListener("change", function(event) {
+    // Elementos del DOM
+    const csvFileInput = document.getElementById('csvFile');
+    const csvStatus = document.getElementById('csvStatus');
+    const readerDiv = document.getElementById('reader');
+    const resultDiv = document.getElementById('result');
+    const iconDiv = document.getElementById('icon');
+    const messageDiv = document.getElementById('message');
+    const detailsDiv = document.getElementById('details');
+    const registrosDiv = document.getElementById('registros');
+    const exportBtn = document.getElementById('exportBtn');
+    const successSound = document.getElementById('successSound');
+    const errorSound = document.getElementById('errorSound');
+
+    // Cargar registros previos
+    actualizarRegistros();
+
+    // Evento para cargar el archivo CSV
+    csvFileInput.addEventListener('change', cargarCSV);
+
+    // Evento para exportar registros
+    exportBtn.addEventListener('click', exportarRegistros);
+
+    function cargarCSV(event) {
       const file = event.target.files[0];
       if (!file) return;
 
@@ -32,41 +121,80 @@
       reader.onload = function(e) {
         const text = e.target.result;
         const lines = text.split(/\r?\n/);
-        socios = lines.map(line => line.split(";")[2]?.trim()).filter(dni => dni?.length > 0);
-        document.getElementById("csvStatus").textContent = `Archivo cargado con ${socios.length} registros.`;
-        document.getElementById("reader").style.display = "block";
-        startScanner();
+        socios = lines.map(line => {
+          const parts = line.split(';');
+          return {
+            dni: parts[2]?.trim(),
+            nombre: parts[0]?.trim() + ' ' + (parts[1]?.trim() || '')
+          };
+        }).filter(socio => socio.dni?.length > 0);
+
+        csvStatus.textContent = `Archivo cargado: ${socios.length} socios registrados.`;
+        exportBtn.disabled = false;
+        iniciarEscaneo();
       };
       reader.readAsText(file, "UTF-8");
-    });
+    }
 
-    function startScanner() {
-      const html5QrCode = new Html5Qrcode("reader");
-
-      html5QrCode.start(
+    function iniciarEscaneo() {
+      if (scanning) return;
+      
+      scanner = new Html5Qrcode("reader");
+      scanner.start(
         { facingMode: "environment" },
-        {
-          fps: 10,
-          qrbox: 250
-        },
-        qrCodeMessage => {
-          const dni = extraerDniDesdeUrl(qrCodeMessage);
-          const statusEl = document.getElementById("status");
-
-          if (socios.includes(dni)) {
-            statusEl.textContent = `✅ Socio válido: DNI ${dni}`;
-            statusEl.className = "ok";
-          } else {
-            statusEl.textContent = `❌ Código inválido: ${qrCodeMessage}`;
-            statusEl.className = "error";
-          }
-        },
-        errorMessage => {
-          // Silenciar errores de escaneo para no llenar la consola
-        }
-      ).catch(err => {
-        console.error("Error al iniciar la cámara:", err);
+        { fps: 10, qrbox: 250 },
+        procesarQR,
+        () => {}
+      ).then(() => {
+        scanning = true;
+      }).catch(err => {
+        console.error("Error al iniciar escáner:", err);
+        alert("Error al acceder a la cámara: " + err.message);
       });
+    }
+
+    function procesarQR(qrCodeMessage) {
+      // Detener temporalmente el escáner
+      scanner.pause();
+      
+      const dni = extraerDniDesdeUrl(qrCodeMessage);
+      const socio = socios.find(s => s.dni === dni);
+      const registroExistente = registros.find(r => r.dni === dni && esHoy(r.fecha));
+      
+      // Mostrar resultado
+      if (registroExistente) {
+        mostrarResultado('error', '❌ QR ya ingresó', `DNI: ${dni}<br>${registroExistente.fecha}`);
+        errorSound.play();
+      } else if (socio) {
+        const registro = {
+          dni: dni,
+          nombre: socio.nombre,
+          fecha: new Date().toLocaleString()
+        };
+        registros.push(registro);
+        localStorage.setItem('registros', JSON.stringify(registros));
+        actualizarRegistros();
+        
+        mostrarResultado('success', '✅ Ingreso registrado', `Nombre: ${socio.nombre}<br>DNI: ${dni}`);
+        successSound.play();
+      } else {
+        mostrarResultado('error', '❌ No es socio', `Código escaneado: ${qrCodeMessage}`);
+        errorSound.play();
+      }
+
+      // Volver a escanear después de 2 segundos
+      setTimeout(() => {
+        resultDiv.style.display = 'none';
+        scanner.resume();
+      }, 2000);
+    }
+
+    function mostrarResultado(tipo, icono, mensaje, detalles = '') {
+      resultDiv.className = tipo;
+      resultDiv.style.display = 'block';
+      iconDiv.innerHTML = icono;
+      messageDiv.innerHTML = mensaje;
+      detailsDiv.innerHTML = detalles;
     }
 
     function extraerDniDesdeUrl(qrContent) {
@@ -74,9 +202,46 @@
         const url = new URL(qrContent);
         return url.searchParams.get("id") || qrContent;
       } catch (e) {
-        // Si no es una URL válida, devolvemos el contenido tal como está
         return qrContent.trim();
       }
+    }
+
+    function actualizarRegistros() {
+      const registrosHoy = registros.filter(r => esHoy(r.fecha));
+      registrosDiv.innerHTML = registrosHoy.length > 0 
+        ? registrosHoy.map(r => `<p><strong>${r.fecha}</strong> - ${r.nombre || 'Socio'} (DNI: ${r.dni})</p>`).join('')
+        : '<p>No hay registros de ingreso hoy.</p>';
+    }
+
+    function esHoy(fechaStr) {
+      const fechaRegistro = new Date(fechaStr);
+      const hoy = new Date();
+      return fechaRegistro.getDate() === hoy.getDate() && 
+             fechaRegistro.getMonth() === hoy.getMonth() && 
+             fechaRegistro.getFullYear() === hoy.getFullYear();
+    }
+
+    function exportarRegistros() {
+      const registrosHoy = registros.filter(r => esHoy(r.fecha));
+      if (registrosHoy.length === 0) {
+        alert('No hay registros para exportar hoy');
+        return;
+      }
+
+      let csvContent = "Fecha y hora;Nombre;DNI\n";
+      registrosHoy.forEach(r => {
+        csvContent += `${r.fecha};"${r.nombre}";${r.dni}\n`;
+      });
+
+      const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.setAttribute('href', url);
+      link.setAttribute('download', `registros_ingreso_${new Date().toLocaleDateString()}.csv`);
+      link.style.visibility = 'hidden';
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
     }
   </script>
 </body>
