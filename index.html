@@ -382,25 +382,44 @@
       });
     }
 
-    // Procesar QR
-    function procesarQR(qrContent) {
-  const dni = qrContent.split('=')[1] || qrContent; // Extrae DNI de URLs
+  // 1. AÑADE ESTA VARIABLE GLOBAL AL INICIO DEL SCRIPT (con las otras variables)
+let escaneoEnProceso = false;
+
+// 2. REEMPLAZA LA FUNCIÓN procesarQR POR ESTA VERSIÓN MEJORADA:
+function procesarQR(qrContent) {
+  // Evita procesamiento paralelo
+  if (escaneoEnProceso) return;
+  escaneoEnProceso = true;
+
+  const dni = qrContent.split('=')[1] || qrContent;
   const socio = socios.find(s => s.dni === dni);
   
   if (!socio) {
     mostrarResultado('error', '❌ No registrado', `DNI: ${dni}`);
     document.getElementById('errorSound').play();
+    escaneoEnProceso = false;
     return;
   }
 
-  // Verificar si ya ingresó hoy (MODIFICACIÓN CLAVE)
-  const registroExistente = registros.find(r => r.dni === dni && esHoy(r.fecha));
+  // Validación mejorada de duplicados
+  const hoy = new Date().toDateString();
+  const registroExistente = registros.find(r => 
+    r.dni === dni && 
+    new Date(r.fecha).toDateString() === hoy
+  );
+
   if (registroExistente) {
-    mostrarResultado('error', '❌ Ya ingresó', `DNI: ${dni}<br>${registroExistente.fecha}`);
+    mostrarResultado('error', '❌ Ya ingresó hoy', `
+      ${socio.nombre}<br>
+      DNI: ${dni}<br>
+      Hora anterior: ${registroExistente.fecha.split(',')[1].trim()}
+    `);
     document.getElementById('errorSound').play();
+    escaneoEnProceso = false;
     return;
   }
 
+  // Registrar nuevo ingreso
   const registro = {
     dni: dni,
     nombre: socio.nombre,
@@ -411,8 +430,27 @@
   localStorage.setItem('registros', JSON.stringify(registros));
   actualizarRegistros();
   
-  mostrarResultado('success', '✅ Registrado', socio.nombre);
+  mostrarResultado('success', '✅ Registrado', `
+    ${socio.nombre}<br>
+    DNI: ${dni}<br>
+    Hora: ${registro.fecha.split(',')[1].trim()}
+  `);
   document.getElementById('successSound').play();
+
+  // Pausar escáner para evitar duplicados
+  if (scanner) {
+    scanner.pause().then(() => {
+      setTimeout(() => {
+        scanner.resume().catch(err => {
+          console.error("Error al reanudar:", err);
+          iniciarEscaneo(); // Reinicia si hay error
+        });
+        escaneoEnProceso = false; // Libera para nuevo escaneo
+      }, 3000); // 3 segundos de pausa
+    });
+  } else {
+    escaneoEnProceso = false;
+  }
 }
 
     // Exportar registros
