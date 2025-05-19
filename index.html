@@ -230,6 +230,8 @@
     let registros = JSON.parse(localStorage.getItem('registros')) || [];
     let scanner;
     let selectedSocio = null;
+    let ultimoQRLeido = null;
+    let tiempoUltimoEscaneo = 0;
 
     // Elementos del DOM
     const csvFile = document.getElementById('csvFile');
@@ -328,6 +330,72 @@
       }
     }
 
+    // Iniciar escáner
+    function iniciarEscaneo() {
+      if (scanner) return;
+
+      scanner = new Html5Qrcode("reader");
+      scanner.start(
+        { facingMode: "environment" },
+        { fps: 10, qrbox: 250 },
+        (decodedText) => {
+          procesarQR(decodedText);
+        },
+        (error) => {
+          console.log("Error:", error);
+        }
+      ).catch(err => {
+        console.error("Error al iniciar:", err);
+      });
+    }
+
+    // Procesar QR (VERSIÓN CORREGIDA)
+    function procesarQR(qrContent) {
+      const ahora = Date.now();
+      if (qrContent === ultimoQRLeido && (ahora - tiempoUltimoEscaneo) < 3000) {
+        return;
+      }
+
+      const dni = qrContent.split('=')[1] || qrContent;
+      const socio = socios.find(s => s.dni === dni);
+      
+      if (!socio) {
+        mostrarResultado('error', '❌ No registrado', `DNI: ${dni}`);
+        document.getElementById('errorSound').play();
+        return;
+      }
+
+      const registroExistente = registros.find(r => r.dni === dni && esHoy(r.fecha));
+      if (registroExistente) {
+        mostrarResultado('error', '❌ Ya ingresó hoy', `
+          ${socio.nombre}<br>
+          DNI: ${dni}<br>
+          Hora anterior: ${registroExistente.fecha.split(',')[1].trim()}
+        `);
+        document.getElementById('errorSound').play();
+        return;
+      }
+
+      const registro = {
+        dni: dni,
+        nombre: socio.nombre,
+        fecha: new Date().toLocaleString()
+      };
+      
+      registros.push(registro);
+      localStorage.setItem('registros', JSON.stringify(registros));
+      actualizarRegistros();
+      
+      mostrarResultado('success', '✅ Registrado', `
+        ${socio.nombre}<br>
+        DNI: ${dni}
+      `);
+      document.getElementById('successSound').play();
+
+      ultimoQRLeido = qrContent;
+      tiempoUltimoEscaneo = ahora;
+    }
+
     // Registrar manualmente
     function registrarManual() {
       if (!selectedSocio) {
@@ -338,7 +406,11 @@
 
       const registroExistente = registros.find(r => r.dni === selectedSocio.dni && esHoy(r.fecha));
       if (registroExistente) {
-        mostrarResultado('error', '❌ Ya ingresó', `DNI: ${selectedSocio.dni}`);
+        mostrarResultado('error', '❌ Ya ingresó hoy', `
+          ${selectedSocio.nombre}<br>
+          DNI: ${selectedSocio.dni}<br>
+          Hora anterior: ${registroExistente.fecha.split(',')[1].trim()}
+        `);
         document.getElementById('errorSound').play();
         return;
       }
@@ -363,102 +435,23 @@
       manualRegisterBtn.disabled = true;
     }
 
-    // Iniciar escáner
-    function iniciarEscaneo() {
-      if (scanner) return;
+    // Actualizar registros
+    function actualizarRegistros() {
+      const registrosHoy = registros.filter(r => esHoy(r.fecha));
 
-      scanner = new Html5Qrcode("reader");
-      scanner.start(
-        { facingMode: "environment" },
-        { fps: 10, qrbox: 250 },
-        (decodedText) => {
-          procesarQR(decodedText);
-        },
-        (error) => {
-          console.log("Error:", error);
-        }
-      ).catch(err => {
-        console.error("Error al iniciar:", err);
-      });
+      registrosList.innerHTML = registrosHoy.length > 0
+        ? registrosHoy.map(r => `
+            <div style="padding: 8px 0; border-bottom: 1px solid #eee;">
+              <strong>${r.fecha}</strong><br>
+              ${r.nombre} (${r.dni})
+            </div>
+          `).join('')
+        : '<p>No hay registros aún.</p>';
     }
-
-  // 1. AÑADE ESTA VARIABLE GLOBAL AL INICIO DEL SCRIPT (con las otras variables)
-let escaneoEnProceso = false;
-
-// 2. REEMPLAZA LA FUNCIÓN procesarQR POR ESTA VERSIÓN MEJORADA:
-function procesarQR(qrContent) {
-  // Evita procesamiento paralelo
-  if (escaneoEnProceso) return;
-  escaneoEnProceso = true;
-
-  const dni = qrContent.split('=')[1] || qrContent;
-  const socio = socios.find(s => s.dni === dni);
-  
-  if (!socio) {
-    mostrarResultado('error', '❌ No registrado', `DNI: ${dni}`);
-    document.getElementById('errorSound').play();
-    escaneoEnProceso = false;
-    return;
-  }
-
-  // Validación mejorada de duplicados
-  const hoy = new Date().toDateString();
-  const registroExistente = registros.find(r => 
-    r.dni === dni && 
-    new Date(r.fecha).toDateString() === hoy
-  );
-
-  if (registroExistente) {
-    mostrarResultado('error', '❌ Ya ingresó hoy', `
-      ${socio.nombre}<br>
-      DNI: ${dni}<br>
-      Hora anterior: ${registroExistente.fecha.split(',')[1].trim()}
-    `);
-    document.getElementById('errorSound').play();
-    escaneoEnProceso = false;
-    return;
-  }
-
-  // Registrar nuevo ingreso
-  const registro = {
-    dni: dni,
-    nombre: socio.nombre,
-    fecha: new Date().toLocaleString()
-  };
-  
-  registros.push(registro);
-  localStorage.setItem('registros', JSON.stringify(registros));
-  actualizarRegistros();
-  
-  mostrarResultado('success', '✅ Registrado', `
-    ${socio.nombre}<br>
-    DNI: ${dni}<br>
-    Hora: ${registro.fecha.split(',')[1].trim()}
-  `);
-  document.getElementById('successSound').play();
-
-  // Pausar escáner para evitar duplicados
-  if (scanner) {
-    scanner.pause().then(() => {
-      setTimeout(() => {
-        scanner.resume().catch(err => {
-          console.error("Error al reanudar:", err);
-          iniciarEscaneo(); // Reinicia si hay error
-        });
-        escaneoEnProceso = false; // Libera para nuevo escaneo
-      }, 3000); // 3 segundos de pausa
-    });
-  } else {
-    escaneoEnProceso = false;
-  }
-}
 
     // Exportar registros
     function exportarRegistros() {
-      const hoy = new Date().toLocaleDateString();
-      const registrosHoy = registros.filter(r => 
-        new Date(r.fecha).toLocaleDateString() === hoy
-      );
+      const registrosHoy = registros.filter(r => esHoy(r.fecha));
 
       let csv = "Fecha,Nombre,DNI\n";
       registrosHoy.forEach(r => {
@@ -469,17 +462,14 @@ function procesarQR(qrContent) {
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
-      a.download = `registros_${hoy.replace(/\//g, '-')}.csv`;
+      a.download = `registros_${new Date().toLocaleDateString().replace(/\//g, '-')}.csv`;
       a.click();
     }
 
     // Limpiar registros
     function limpiarRegistros() {
       if (confirm('¿Borrar todos los registros de hoy?')) {
-        const hoy = new Date().toLocaleDateString();
-        registros = registros.filter(r => 
-          new Date(r.fecha).toLocaleDateString() !== hoy
-        );
+        registros = registros.filter(r => !esHoy(r.fecha));
         localStorage.setItem('registros', JSON.stringify(registros));
         actualizarRegistros();
       }
@@ -497,7 +487,7 @@ function procesarQR(qrContent) {
       
       setTimeout(() => {
         result.style.display = 'none';
-      }, 2000);
+      }, 3000);
     }
 
     // Verificar si es hoy
