@@ -2,87 +2,81 @@
 <html lang="es">
 <head>
   <meta charset="UTF-8">
-  <title>Control de Ingreso por QR</title>
+  <title>Validador de Socios</title>
+  <script src="https://unpkg.com/html5-qrcode"></script>
   <style>
-    body { font-family: Arial, sans-serif; text-align: center; margin: 20px; }
-    #preview { width: 100%; max-width: 400px; margin: auto; }
-    #status { font-size: 24px; margin-top: 20px; }
-    .ok { color: green; font-weight: bold; }
-    .error { color: red; font-weight: bold; }
+    body { font-family: sans-serif; text-align: center; padding: 20px; }
+    #reader { width: 300px; margin: 20px auto; }
+    #status { margin-top: 20px; font-size: 20px; font-weight: bold; }
+    #status.ok { color: green; }
+    #status.error { color: red; }
   </style>
 </head>
 <body>
-  <h2>Escaneo de QR - Control de Ingreso</h2>
+  <h1>Validador de Socios</h1>
 
-  <input type="file" id="fileInput" accept=".csv">
-  <p>Seleccioná tu archivo CSV con: Nombre;Apellido;DNI</p>
+  <input type="file" id="csvFile" accept=".csv">
+  <p id="csvStatus">Esperando archivo...</p>
 
-  <video id="preview"></video>
-  <div id="status"></div>
+  <div id="reader" style="display:none;"></div>
+  <p id="status"></p>
 
-  <button onclick="descargarIngresos()">Descargar lista de ingresos</button>
-
-  <script src="https://unpkg.com/qr-scanner/qr-scanner.umd.min.js"></script>
   <script>
-    let datosValidos = [];
-    let ingresados = [];
+    let socios = [];
 
-    document.getElementById('fileInput').addEventListener('change', function (e) {
-      const file = e.target.files[0];
+    document.getElementById("csvFile").addEventListener("change", function(event) {
+      const file = event.target.files[0];
+      if (!file) return;
+
       const reader = new FileReader();
-      reader.onload = function (event) {
-        const lines = event.target.result.split('\n');
-        datosValidos = lines
-          .map(l => l.trim().split(';'))
-          .filter(l => l.length >= 3 && l[2].trim() !== "");
-        alert("Archivo cargado con " + datosValidos.length + " registros.");
+      reader.onload = function(e) {
+        const text = e.target.result;
+        const lines = text.split(/\r?\n/);
+        socios = lines.map(line => line.split(";")[2]?.trim()).filter(dni => dni?.length > 0);
+        document.getElementById("csvStatus").textContent = `Archivo cargado con ${socios.length} registros.`;
+        document.getElementById("reader").style.display = "block";
+        startScanner();
       };
-      reader.readAsText(file, 'utf-8'); // Forzar lectura como UTF-8
+      reader.readAsText(file, "UTF-8");
     });
 
-    const video = document.getElementById('preview');
-    const qrScanner = new QrScanner(video, result => verificarQR(result), {
-      highlightScanRegion: true
-    });
-    qrScanner.start();
+    function startScanner() {
+      const html5QrCode = new Html5Qrcode("reader");
 
-    function verificarQR(texto) {
+      html5QrCode.start(
+        { facingMode: "environment" },
+        {
+          fps: 10,
+          qrbox: 250
+        },
+        qrCodeMessage => {
+          const dni = extraerDniDesdeUrl(qrCodeMessage);
+          const statusEl = document.getElementById("status");
+
+          if (socios.includes(dni)) {
+            statusEl.textContent = `✅ Socio válido: DNI ${dni}`;
+            statusEl.className = "ok";
+          } else {
+            statusEl.textContent = `❌ Código inválido: ${qrCodeMessage}`;
+            statusEl.className = "error";
+          }
+        },
+        errorMessage => {
+          // Silenciar errores de escaneo para no llenar la consola
+        }
+      ).catch(err => {
+        console.error("Error al iniciar la cámara:", err);
+      });
+    }
+
+    function extraerDniDesdeUrl(qrContent) {
       try {
-        const clave = texto.trim();
-        const persona = datosValidos.find(d => d[2] === clave);
-
-        if (!persona) {
-          mostrarMensaje("DNI no encontrado: " + clave, 'error');
-          return;
-        }
-        const nombre = persona[0];
-        const apellido = persona[1];
-
-        if (ingresados.includes(clave)) {
-          mostrarMensaje("❌ Ya ingresó: " + nombre + " " + apellido, 'error');
-        } else {
-          ingresados.push(clave);
-          mostrarMensaje("✔️ Ingreso autorizado: " + nombre + " " + apellido, 'ok');
-        }
-      } catch (err) {
-        mostrarMensaje("QR inválido", 'error');
+        const url = new URL(qrContent);
+        return url.searchParams.get("id") || qrContent;
+      } catch (e) {
+        // Si no es una URL válida, devolvemos el contenido tal como está
+        return qrContent.trim();
       }
-    }
-
-    function mostrarMensaje(mensaje, tipo) {
-      const div = document.getElementById('status');
-      div.innerText = mensaje;
-      div.className = tipo;
-    }
-
-    function descargarIngresos() {
-      let csv = "DNI\n" + ingresados.join("\n");
-      const blob = new Blob([csv], { type: 'text/csv' });
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = "ingresados.csv";
-      a.click();
     }
   </script>
 </body>
