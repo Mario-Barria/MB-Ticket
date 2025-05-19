@@ -8,223 +8,160 @@
   <style>
     :root {
       --primary: #2c3e50;
-      --secondary: #3498db;
+      --secondary: #2980b9; /* Azul más oscuro */
       --success: #27ae60;
       --danger: #e74c3c;
-      --warning: #f39c12;
+      --warning: #2ecc71; /* Verde en lugar de naranja */
       --light: #ecf0f1;
       --dark: #2c3e50;
       --accent: #9b59b6;
     }
     
-    /* [Mantén todos los estilos anteriores...] */
+    /* [Mantén los estilos base anteriores...] */
 
-    /* Nuevos estilos agregados */
-    .btn-danger {
-      background: linear-gradient(to right, var(--danger), #c0392b);
-    }
-
-    .btn-warning {
-      background: linear-gradient(to right, var(--warning), #e67e22);
-    }
-
-    .search-box {
-      background: white;
-      padding: 20px;
-      border-radius: 10px;
-      margin: 20px 0;
-      box-shadow: 0 2px 10px rgba(0,0,0,0.1);
-    }
-
-    .search-box input {
-      width: 100%;
-      padding: 12px;
-      margin: 10px 0;
-      border: 2px solid #ddd;
+    /* Botones mejorados */
+    button {
+      padding: 15px 25px;
+      color: white !important; /* Texto blanco forzado */
+      border: none;
       border-radius: 5px;
-      font-size: 1rem;
-    }
-
-    .search-results {
-      max-height: 200px;
-      overflow-y: auto;
-      margin-top: 10px;
-      border: 1px solid #eee;
-      border-radius: 5px;
-      padding: 10px;
-    }
-
-    .socio-item {
-      padding: 10px;
-      border-bottom: 1px solid #eee;
       cursor: pointer;
+      margin: 10px auto;
+      font-size: 1rem;
+      font-weight: bold;
+      transition: all 0.3s;
+      width: 100%;
+      max-width: 300px;
+      display: block;
+      box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+      text-align: center;
     }
 
-    .socio-item:hover {
-      background-color: #f5f5f5;
+    #exportBtn {
+      background: linear-gradient(to right, var(--secondary), #3498db);
+    }
+
+    #clearBtn {
+      background: linear-gradient(to right, var(--danger), #c0392b);
+      margin-top: 20px; /* Más espacio */
+    }
+
+    #manualRegisterBtn {
+      background: linear-gradient(to right, var(--warning), #27ae60);
+    }
+
+    /* Mejoras visuales para la carga de archivos */
+    #csvFile {
+      display: none;
+    }
+
+    .file-upload label {
+      background: var(--secondary);
+      color: white;
+      padding: 12px 20px;
+      border-radius: 5px;
+      display: inline-block;
+      cursor: pointer;
+      transition: all 0.3s;
+    }
+
+    .file-upload label:hover {
+      background: #3498db;
+      transform: translateY(-2px);
+    }
+
+    #csvStatus {
+      margin-top: 10px;
+      font-weight: bold;
+      color: var(--primary);
     }
   </style>
 </head>
 <body>
-  <div class="container">
-    <header>
-      <img src="gimnasia y esgrima.jpg" alt="MB-Ticket Logo" class="logo">
-      <h1>Validador de Socios MB-Ticket</h1>
-    </header>
-
-    <div class="file-upload">
-      <label for="csvFile">Seleccionar archivo de socios (CSV)</label>
-      <input type="file" id="csvFile" accept=".csv" class="file-input">
-      <p id="csvStatus">Esperando archivo CSV...</p>
-    </div>
-
-    <div class="search-box">
-      <h3>Búsqueda Manual</h3>
-      <input type="text" id="searchInput" placeholder="Ingrese DNI o nombre">
-      <div class="search-results" id="searchResults"></div>
-      <button id="manualRegisterBtn" class="btn-warning" disabled>Registrar Ingreso Manual</button>
-    </div>
-
-    <div id="reader"></div>
-    
-    <div id="result">
-      <div id="icon" class="icon"></div>
-      <div id="message"></div>
-      <div id="details"></div>
-    </div>
-
-    <div id="registros">
-      <h3>Registros de Ingreso <span id="registrosCount">(0 hoy)</span></h3>
-      <div id="registros-list">
-        <p>No hay registros de ingreso hoy.</p>
-      </div>
-    </div>
-
-    <button id="exportBtn" disabled>Generar Informe</button>
-    <button id="clearBtn" class="btn-danger">Limpiar Registros</button>
-  </div>
-
-  <audio id="successSound" src="https://assets.mixkit.co/sfx/preview/mixkit-correct-answer-tone-2870.mp3" preload="auto"></audio>
-  <audio id="errorSound" src="https://assets.mixkit.co/sfx/preview/mixkit-wrong-answer-fail-notification-946.mp3" preload="auto"></audio>
+  <!-- [Mantén la misma estructura HTML anterior...] -->
 
   <script>
-    // [Mantén todas las variables globales anteriores...]
+    // Variables globales (asegúrate de tener estas)
+    let socios = [];
+    let registros = JSON.parse(localStorage.getItem('registros')) || [];
+    let scanner;
+    let scanning = false;
 
-    // Nuevos elementos del DOM
-    const searchInput = document.getElementById('searchInput');
-    const searchResults = document.getElementById('searchResults');
-    const manualRegisterBtn = document.getElementById('manualRegisterBtn');
-    const clearBtn = document.getElementById('clearBtn');
-    const registrosCount = document.getElementById('registrosCount');
+    // Función CORREGIDA para cargar CSV
+    function cargarCSV(event) {
+      const file = event.target.files[0];
+      if (!file) return;
 
-    // Nuevos eventos
-    searchInput.addEventListener('input', buscarSocio);
-    manualRegisterBtn.addEventListener('click', registrarManual);
-    clearBtn.addEventListener('click', limpiarRegistros);
-
-    // [Mantén todas las funciones anteriores hasta actualizarRegistros()...]
-
-    function actualizarRegistros() {
-      const registrosHoy = registros.filter(r => esHoy(r.fecha));
-      registrosCount.textContent = `(${registrosHoy.length} hoy)`;
-      
-      if (registrosHoy.length === 0) {
-        registrosList.innerHTML = '<p>No hay registros de ingreso hoy.</p>';
-      } else {
-        registrosList.innerHTML = registrosHoy.map(r => `
-          <div class="registro-item">
-            <strong>${r.fecha}</strong><br>
-            ${r.nombre || 'Socio'} (DNI: ${r.dni})
-          </div>
-        `).join('');
-      }
-    }
-
-    // Nueva función: Búsqueda de socios
-    function buscarSocio() {
-      const query = searchInput.value.toLowerCase();
-      if (query.length < 2) {
-        searchResults.innerHTML = '';
-        manualRegisterBtn.disabled = true;
-        return;
-      }
-
-      const resultados = socios.filter(socio => 
-        socio.dni.includes(query) || 
-        socio.nombre.toLowerCase().includes(query)
-      );
-
-      if (resultados.length > 0) {
-        searchResults.innerHTML = resultados.map(socio => `
-          <div class="socio-item" data-dni="${socio.dni}">
-            <strong>${socio.nombre}</strong><br>
-            DNI: ${socio.dni}
-          </div>
-        `).join('');
-
-        // Agregar evento click a los resultados
-        document.querySelectorAll('.socio-item').forEach(item => {
-          item.addEventListener('click', () => {
-            const dni = item.getAttribute('data-dni');
-            searchInput.value = dni;
-            searchResults.innerHTML = '';
-            manualRegisterBtn.disabled = false;
+      const reader = new FileReader();
+      reader.onload = function(e) {
+        try {
+          const text = e.target.result;
+          const lines = text.split(/\r?\n/).filter(line => line.trim() !== '');
+          
+          socios = lines.map(line => {
+            const parts = line.split(';');
+            // Asegura que haya al menos 3 columnas (nombre, apellido, dni)
+            if (parts.length < 3) {
+              throw new Error("Formato de CSV incorrecto");
+            }
+            return {
+              dni: parts[2].trim(),
+              nombre: `${parts[0].trim()} ${parts[1].trim()}`
+            };
           });
-        });
-      } else {
-        searchResults.innerHTML = '<p>No se encontraron socios</p>';
-        manualRegisterBtn.disabled = true;
-      }
-    }
 
-    // Nueva función: Registro manual
-    function registrarManual() {
-      const dni = searchInput.value.trim();
-      const socio = socios.find(s => s.dni === dni);
-      
-      if (!socio) {
-        mostrarResultado('error', '❌ No encontrado', 'Verifique el DNI ingresado');
-        errorSound.play();
-        return;
-      }
+          csvStatus.textContent = `✅ Archivo cargado: ${socios.length} socios`;
+          csvStatus.style.color = "green";
+          exportBtn.disabled = false;
+          iniciarEscaneo();
 
-      const registroExistente = registros.find(r => r.dni === dni && esHoy(r.fecha));
-      if (registroExistente) {
-        mostrarResultado('error', '❌ Ya ingresó', `DNI: ${dni}<br>${registroExistente.fecha}`);
-        errorSound.play();
-        return;
-      }
-
-      const registro = {
-        dni: dni,
-        nombre: socio.nombre,
-        fecha: new Date().toLocaleString()
+        } catch (error) {
+          csvStatus.textContent = `❌ Error: El archivo debe tener formato: Nombre;Apellido;DNI`;
+          csvStatus.style.color = "red";
+          console.error("Error al procesar CSV:", error);
+        }
       };
       
-      registros.push(registro);
-      localStorage.setItem('registros', JSON.stringify(registros));
-      actualizarRegistros();
+      reader.onerror = () => {
+        csvStatus.textContent = "❌ Error al leer el archivo";
+        csvStatus.style.color = "red";
+      };
       
-      mostrarResultado('success', '✅ Registrado', `Nombre: ${socio.nombre}<br>DNI: ${dni}`);
-      successSound.play();
-      
-      // Limpiar búsqueda
-      searchInput.value = '';
-      searchResults.innerHTML = '';
-      manualRegisterBtn.disabled = true;
+      reader.readAsText(file, "UTF-8");
     }
 
-    // Nueva función: Limpiar registros
-    function limpiarRegistros() {
-      if (confirm('¿Está seguro que desea borrar TODOS los registros de hoy?')) {
-        registros = registros.filter(r => !esHoy(r.fecha));
-        localStorage.setItem('registros', JSON.stringify(registros));
-        actualizarRegistros();
-        mostrarResultado('success', '✓', 'Registros de hoy borrados');
+    // [Mantén las demás funciones igual pero asegúrate de tener:]
+    function iniciarEscaneo() {
+      if (scanning || socios.length === 0) return;
+
+      if (scanner) {
+        scanner.stop().catch(() => {});
       }
+
+      scanner = new Html5Qrcode("reader");
+      const config = {
+        fps: 10,
+        qrbox: 250,
+        disableFlip: true
+      };
+
+      scanner.start(
+        { facingMode: "environment" },
+        config,
+        (qrCodeMessage) => {
+          scanner.pause();
+          procesarQR(qrCodeMessage);
+          setTimeout(() => scanner.resume().catch(() => iniciarEscaneo()), 2000);
+        },
+        (error) => console.log("Error de escaneo:", error)
+      ).then(() => {
+        scanning = true;
+      }).catch(err => {
+        console.error("Error al iniciar cámara:", err);
+      });
     }
 
-    // [Mantén el resto de las funciones...]
+    // [Las demás funciones permanecen iguales...]
   </script>
 </body>
 </html>
