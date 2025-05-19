@@ -45,25 +45,27 @@
     qrScanner.start();
 
     function verificarQR(texto) {
-      try {
-        const [nombre, apellido, dni] = texto.split(',').map(t => t.trim());
-        const clave = dni;
-        const existe = datosValidos.find(d => d[2] === clave);
+  try {
+    const dni = texto.trim(); // solo DNI escaneado
+    const persona = datosValidos.find(d => d[2] === dni);
 
-        if (!existe) {
-          mostrarMensaje("DNI no encontrado", 'error');
-          return;
-        }
-        if (ingresados.includes(clave)) {
-          mostrarMensaje("❌ Ya ingresó: " + nombre + " " + apellido, 'error');
-        } else {
-          ingresados.push(clave);
-          mostrarMensaje("✔️ Ingreso autorizado: " + nombre + " " + apellido, 'ok');
-        }
-      } catch (err) {
-        mostrarMensaje("QR inválido", 'error');
-      }
+    if (!persona) {
+      mostrarMensaje("❌ DNI no encontrado: " + dni, 'error');
+      return;
     }
+
+    const [nombre, apellido] = persona;
+
+    if (ingresados.includes(dni)) {
+      mostrarMensaje("❌ Ya ingresó: " + nombre + " " + apellido, 'error');
+    } else {
+      ingresados.push(dni);
+      mostrarMensaje("✔️ Ingreso autorizado: " + nombre + " " + apellido, 'ok');
+    }
+  } catch (err) {
+    mostrarMensaje("QR inválido", 'error');
+  }
+}
 
     function mostrarMensaje(mensaje, tipo) {
       const div = document.getElementById('status');
