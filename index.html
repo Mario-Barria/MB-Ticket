@@ -306,36 +306,59 @@
       reader.readAsText(file, "UTF-8");
     }
 
-    function iniciarEscaneo() {
-      if (scanning) return;
+function iniciarEscaneo() {
+  if (scanning) return;
+  
+  Html5Qrcode.getCameras().then(devices => {
+    if (devices && devices.length) {
+      scanner = new Html5Qrcode("reader");
       
-      Html5Qrcode.getCameras().then(devices => {
-        if (devices && devices.length) {
-          scanner = new Html5Qrcode("reader");
+      // Configuración mejorada de la cámara
+      const cameraConfig = {
+        fps: 10,
+        qrbox: { width: 250, height: 250 },
+        rememberLastUsedCamera: true,
+        supportedScanTypes: [Html5QrcodeScanType.SCAN_TYPE_CAMERA]
+      };
+
+      // Intento con cámara trasera primero
+      scanner.start(
+        { facingMode: "environment" },
+        cameraConfig,
+        procesarQR,
+        (error) => {
+          console.warn("Error con cámara trasera:", error);
+          // Fallback a cámara frontal
           scanner.start(
-            { facingMode: "environment" },
-            { 
-              fps: 10, 
-              qrbox: {width: 250, height: 250},
-              rememberLastUsedCamera: true
-            },
+            { facingMode: "user" },
+            cameraConfig,
             procesarQR,
-            (error) => {
-              console.log("Error de escaneo:", error);
+            (err) => {
+              console.error("Error con cámara frontal:", err);
+              mostrarErrorCamara();
             }
-          ).then(() => {
-            scanning = true;
-          }).catch(err => {
-            console.error("Error al iniciar escáner:", err);
-            alert("Error al acceder a la cámara: " + err.message);
-          });
-        } else {
-          alert("No se encontró cámara disponible");
+          );
         }
-      }).catch(err => {
-        alert("No se pudo acceder a los dispositivos de cámara");
+      ).then(() => {
+        scanning = true;
+        console.log("Escáner iniciado correctamente");
+      }).catch(finalError => {
+        console.error("Error definitivo:", finalError);
+        mostrarErrorCamara();
       });
+    } else {
+      mostrarErrorCamara("No se detectaron cámaras");
     }
+  }).catch(deviceError => {
+    console.error("Error al listar cámaras:", deviceError);
+    mostrarErrorCamara();
+  });
+}
+
+function mostrarErrorCamara(mensaje = "Error al acceder a la cámara") {
+  alert(`${mensaje}. Por favor:\n1. Verifica los permisos\n2. Prueba en otro dispositivo\n3. Usa un navegador actualizado`);
+  scanning = false;
+}
 
     function procesarQR(qrCodeMessage) {
       // Evitar procesar el mismo código múltiples veces
