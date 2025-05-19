@@ -8,160 +8,373 @@
   <style>
     :root {
       --primary: #2c3e50;
-      --secondary: #2980b9; /* Azul más oscuro */
-      --success: #27ae60;
-      --danger: #e74c3c;
-      --warning: #2ecc71; /* Verde en lugar de naranja */
+      --secondary: #2980b9; /* Azul */
+      --success: #27ae60; /* Verde */
+      --danger: #e74c3c; /* Rojo */
       --light: #ecf0f1;
       --dark: #2c3e50;
-      --accent: #9b59b6;
     }
     
-    /* [Mantén los estilos base anteriores...] */
-
-    /* Botones mejorados */
+    body {
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      margin: 0;
+      padding: 20px;
+      background-color: #f5f7fa;
+      color: var(--dark);
+    }
+    
+    .container {
+      max-width: 800px;
+      margin: 0 auto;
+    }
+    
+    header {
+      text-align: center;
+      margin-bottom: 20px;
+    }
+    
+    .logo {
+      height: 80px;
+      margin-bottom: 10px;
+    }
+    
+    .file-upload {
+      background: white;
+      padding: 15px;
+      border-radius: 8px;
+      margin-bottom: 20px;
+      box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+    }
+    
+    #csvFile {
+      display: none;
+    }
+    
+    .file-upload label {
+      background: var(--secondary);
+      color: white;
+      padding: 10px 15px;
+      border-radius: 5px;
+      cursor: pointer;
+      display: inline-block;
+    }
+    
+    #csvStatus {
+      margin-top: 10px;
+      font-weight: bold;
+    }
+    
+    #reader {
+      width: 100%;
+      max-width: 500px;
+      margin: 20px auto;
+      background: white;
+      padding: 15px;
+      border-radius: 8px;
+      box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+    }
+    
+    #result {
+      display: none;
+      margin: 20px auto;
+      padding: 20px;
+      border-radius: 8px;
+      text-align: center;
+      max-width: 500px;
+    }
+    
+    .success {
+      background-color: #d4edda;
+      color: #155724;
+      border: 1px solid #c3e6cb;
+    }
+    
+    .error {
+      background-color: #f8d7da;
+      color: #721c24;
+      border: 1px solid #f5c6cb;
+    }
+    
+    .icon {
+      font-size: 40px;
+      margin-bottom: 10px;
+    }
+    
     button {
-      padding: 15px 25px;
-      color: white !important; /* Texto blanco forzado */
+      padding: 12px 20px;
+      color: white !important;
       border: none;
       border-radius: 5px;
       cursor: pointer;
       margin: 10px auto;
-      font-size: 1rem;
       font-weight: bold;
-      transition: all 0.3s;
       width: 100%;
       max-width: 300px;
       display: block;
-      box-shadow: 0 4px 8px rgba(0,0,0,0.1);
-      text-align: center;
     }
-
+    
     #exportBtn {
-      background: linear-gradient(to right, var(--secondary), #3498db);
+      background: var(--secondary); /* Azul */
     }
-
+    
     #clearBtn {
-      background: linear-gradient(to right, var(--danger), #c0392b);
-      margin-top: 20px; /* Más espacio */
+      background: var(--danger); /* Rojo */
     }
-
+    
     #manualRegisterBtn {
-      background: linear-gradient(to right, var(--warning), #27ae60);
+      background: var(--success); /* Verde */
     }
-
-    /* Mejoras visuales para la carga de archivos */
-    #csvFile {
-      display: none;
+    
+    .search-box {
+      background: white;
+      padding: 15px;
+      border-radius: 8px;
+      margin-bottom: 20px;
+      box-shadow: 0 2px 5px rgba(0,0,0,0.1);
     }
-
-    .file-upload label {
-      background: var(--secondary);
-      color: white;
-      padding: 12px 20px;
+    
+    .search-box input {
+      width: 100%;
+      padding: 10px;
+      margin-bottom: 10px;
+      border: 1px solid #ddd;
       border-radius: 5px;
-      display: inline-block;
-      cursor: pointer;
-      transition: all 0.3s;
     }
-
-    .file-upload label:hover {
-      background: #3498db;
-      transform: translateY(-2px);
-    }
-
-    #csvStatus {
-      margin-top: 10px;
-      font-weight: bold;
-      color: var(--primary);
+    
+    #registros {
+      background: white;
+      padding: 15px;
+      border-radius: 8px;
+      margin-bottom: 20px;
+      box-shadow: 0 2px 5px rgba(0,0,0,0.1);
     }
   </style>
 </head>
 <body>
-  <!-- [Mantén la misma estructura HTML anterior...] -->
+  <div class="container">
+    <header>
+      <img src="gimnasia y esgrima.jpg" alt="Logo" class="logo">
+      <h1>Validador de Socios</h1>
+    </header>
+
+    <div class="file-upload">
+      <label for="csvFile">Seleccionar archivo CSV</label>
+      <input type="file" id="csvFile" accept=".csv">
+      <p id="csvStatus">Esperando archivo CSV...</p>
+    </div>
+
+    <div class="search-box">
+      <h3>Búsqueda Manual</h3>
+      <input type="text" id="searchInput" placeholder="Buscar por DNI o nombre">
+      <button id="manualRegisterBtn">Registrar Manualmente</button>
+    </div>
+
+    <div id="reader"></div>
+    
+    <div id="result">
+      <div id="icon" class="icon"></div>
+      <div id="message"></div>
+    </div>
+
+    <div id="registros">
+      <h3>Registros de Hoy</h3>
+      <div id="registros-list">
+        <p>No hay registros aún.</p>
+      </div>
+    </div>
+
+    <button id="exportBtn">Generar Informe</button>
+    <button id="clearBtn">Limpiar Registros</button>
+  </div>
+
+  <audio id="successSound" src="https://assets.mixkit.co/sfx/preview/mixkit-correct-answer-tone-2870.mp3"></audio>
+  <audio id="errorSound" src="https://assets.mixkit.co/sfx/preview/mixkit-wrong-answer-fail-notification-946.mp3"></audio>
 
   <script>
-    // Variables globales (asegúrate de tener estas)
+    // Variables globales
     let socios = [];
     let registros = JSON.parse(localStorage.getItem('registros')) || [];
     let scanner;
-    let scanning = false;
 
-    // Función CORREGIDA para cargar CSV
+    // Elementos del DOM
+    const csvFile = document.getElementById('csvFile');
+    const csvStatus = document.getElementById('csvStatus');
+    const searchInput = document.getElementById('searchInput');
+    const manualRegisterBtn = document.getElementById('manualRegisterBtn');
+    const exportBtn = document.getElementById('exportBtn');
+    const clearBtn = document.getElementById('clearBtn');
+    const registrosList = document.getElementById('registros-list');
+
+    // Eventos
+    csvFile.addEventListener('change', cargarCSV);
+    manualRegisterBtn.addEventListener('click', registrarManual);
+    exportBtn.addEventListener('click', exportarRegistros);
+    clearBtn.addEventListener('click', limpiarRegistros);
+
+    // Cargar CSV
     function cargarCSV(event) {
       const file = event.target.files[0];
       if (!file) return;
 
       const reader = new FileReader();
       reader.onload = function(e) {
-        try {
-          const text = e.target.result;
-          const lines = text.split(/\r?\n/).filter(line => line.trim() !== '');
-          
-          socios = lines.map(line => {
-            const parts = line.split(';');
-            // Asegura que haya al menos 3 columnas (nombre, apellido, dni)
-            if (parts.length < 3) {
-              throw new Error("Formato de CSV incorrecto");
-            }
-            return {
-              dni: parts[2].trim(),
-              nombre: `${parts[0].trim()} ${parts[1].trim()}`
-            };
-          });
+        const content = e.target.result;
+        const lines = content.split(/\r?\n/).filter(line => line.trim() !== '');
+        
+        socios = lines.map(line => {
+          const [nombre, apellido, dni] = line.split(';');
+          return {
+            nombre: `${nombre.trim()} ${apellido.trim()}`,
+            dni: dni.trim()
+          };
+        });
 
-          csvStatus.textContent = `✅ Archivo cargado: ${socios.length} socios`;
-          csvStatus.style.color = "green";
-          exportBtn.disabled = false;
-          iniciarEscaneo();
-
-        } catch (error) {
-          csvStatus.textContent = `❌ Error: El archivo debe tener formato: Nombre;Apellido;DNI`;
-          csvStatus.style.color = "red";
-          console.error("Error al procesar CSV:", error);
-        }
+        csvStatus.textContent = `Archivo cargado: ${socios.length} socios`;
+        csvStatus.style.color = "green";
+        exportBtn.disabled = false;
+        iniciarEscaneo();
       };
       
-      reader.onerror = () => {
-        csvStatus.textContent = "❌ Error al leer el archivo";
-        csvStatus.style.color = "red";
-      };
-      
-      reader.readAsText(file, "UTF-8");
+      reader.readAsText(file);
     }
 
-    // [Mantén las demás funciones igual pero asegúrate de tener:]
+    // Iniciar escáner
     function iniciarEscaneo() {
-      if (scanning || socios.length === 0) return;
-
-      if (scanner) {
-        scanner.stop().catch(() => {});
-      }
+      if (scanner) return;
 
       scanner = new Html5Qrcode("reader");
-      const config = {
-        fps: 10,
-        qrbox: 250,
-        disableFlip: true
-      };
-
       scanner.start(
         { facingMode: "environment" },
-        config,
-        (qrCodeMessage) => {
-          scanner.pause();
-          procesarQR(qrCodeMessage);
-          setTimeout(() => scanner.resume().catch(() => iniciarEscaneo()), 2000);
+        { fps: 10, qrbox: 250 },
+        (decodedText) => {
+          procesarQR(decodedText);
         },
-        (error) => console.log("Error de escaneo:", error)
-      ).then(() => {
-        scanning = true;
-      }).catch(err => {
-        console.error("Error al iniciar cámara:", err);
+        (error) => {
+          console.log("Error:", error);
+        }
+      ).catch(err => {
+        console.error("Error al iniciar:", err);
       });
     }
 
-    // [Las demás funciones permanecen iguales...]
+    // Procesar QR
+    function procesarQR(qrContent) {
+      const dni = qrContent.split('=')[1] || qrContent; // Extrae DNI de URLs
+      const socio = socios.find(s => s.dni === dni);
+      
+      if (!socio) {
+        mostrarResultado('error', '❌ No registrado', `DNI: ${dni}`);
+        document.getElementById('errorSound').play();
+        return;
+      }
+
+      const registro = {
+        dni: dni,
+        nombre: socio.nombre,
+        fecha: new Date().toLocaleString()
+      };
+      
+      registros.push(registro);
+      localStorage.setItem('registros', JSON.stringify(registros));
+      actualizarRegistros();
+      
+      mostrarResultado('success', '✅ Registrado', socio.nombre);
+      document.getElementById('successSound').play();
+    }
+
+    // Búsqueda manual
+    function registrarManual() {
+      const query = searchInput.value.trim();
+      if (!query) return;
+
+      const socio = socios.find(s => 
+        s.dni === query || s.nombre.toLowerCase().includes(query.toLowerCase())
+      );
+
+      if (!socio) {
+        mostrarResultado('error', '❌ No encontrado', query);
+        document.getElementById('errorSound').play();
+        return;
+      }
+
+      const registro = {
+        dni: socio.dni,
+        nombre: socio.nombre,
+        fecha: new Date().toLocaleString()
+      };
+      
+      registros.push(registro);
+      localStorage.setItem('registros', JSON.stringify(registros));
+      actualizarRegistros();
+      
+      mostrarResultado('success', '✅ Registrado', socio.nombre);
+      document.getElementById('successSound').play();
+      searchInput.value = '';
+    }
+
+    // Actualizar lista de registros
+    function actualizarRegistros() {
+      const hoy = new Date().toLocaleDateString();
+      const registrosHoy = registros.filter(r => 
+        new Date(r.fecha).toLocaleDateString() === hoy
+      );
+
+      registrosList.innerHTML = registrosHoy.length > 0
+        ? registrosHoy.map(r => `
+            <div style="padding: 8px 0; border-bottom: 1px solid #eee;">
+              <strong>${r.fecha}</strong><br>
+              ${r.nombre} (${r.dni})
+            </div>
+          `).join('')
+        : '<p>No hay registros aún.</p>';
+    }
+
+    // Exportar registros
+    function exportarRegistros() {
+      const hoy = new Date().toLocaleDateString();
+      const registrosHoy = registros.filter(r => 
+        new Date(r.fecha).toLocaleDateString() === hoy
+      );
+
+      let csv = "Fecha,Nombre,DNI\n";
+      registrosHoy.forEach(r => {
+        csv += `"${r.fecha}","${r.nombre}","${r.dni}"\n`;
+      });
+
+      const blob = new Blob([csv], { type: 'text/csv' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `registros_${hoy.replace(/\//g, '-')}.csv`;
+      a.click();
+    }
+
+    // Limpiar registros
+    function limpiarRegistros() {
+      if (confirm('¿Borrar todos los registros de hoy?')) {
+        const hoy = new Date().toLocaleDateString();
+        registros = registros.filter(r => 
+          new Date(r.fecha).toLocaleDateString() !== hoy
+        );
+        localStorage.setItem('registros', JSON.stringify(registros));
+        actualizarRegistros();
+      }
+    }
+
+    // Mostrar resultado
+    function mostrarResultado(tipo, icono, mensaje) {
+      const result = document.getElementById('result');
+      result.innerHTML = `
+        <div class="icon">${icono}</div>
+        <div>${mensaje}</div>
+      `;
+      result.className = tipo;
+      result.style.display = 'block';
+      
+      setTimeout(() => {
+        result.style.display = 'none';
+      }, 2000);
+    }
   </script>
 </body>
 </html>
