@@ -2,7 +2,7 @@
 <html lang="es">
 <head>
   <meta charset="UTF-8">
-  <title>Control de Ingreso por QR</title>
+  <title>App lectura QR</title>
   <style>
     body { font-family: Arial, sans-serif; text-align: center; margin: 20px; }
     #preview { width: 100%; max-width: 400px; margin: auto; }
@@ -12,12 +12,12 @@
   </style>
 </head>
 <body>
-  <h2>Escaneo de QR - Control de Ingreso</h2>
+  <h2>App lectura QR</h2>
 
   <input type="file" id="fileInput" accept=".csv">
-  <p>Seleccioná tu archivo CSV con: Nombre, Apellido, DNI</p>
+  <p>Seleccioná tu archivo CSV (separado por punto y coma: ;)</p>
 
-  <video id="preview"></video>
+  <video id="preview" playsinline></video>
   <div id="status"></div>
 
   <button onclick="descargarIngresos()">Descargar lista de ingresos</button>
@@ -32,40 +32,40 @@
       const reader = new FileReader();
       reader.onload = function (event) {
         const lines = event.target.result.split('\n');
-        datosValidos = lines.map(l => l.trim().split(',')).filter(l => l.length === 3);
+        datosValidos = lines
+          .map(l => l.trim().split(';'))
+          .filter(l => l.length >= 3)
+          .map(l => [l[0].trim(), l[1].trim(), l[2].trim()]);
         alert("Planilla cargada con " + datosValidos.length + " registros.");
       };
       reader.readAsText(file);
     });
 
     const video = document.getElementById('preview');
-    const qrScanner = new QrScanner(video, result => verificarQR(result), {
-      highlightScanRegion: true
+    const qrScanner = new QrScanner(video, result => verificarQR(result.data), {
+      highlightScanRegion: true,
+      returnDetailedScanResult: true
     });
     qrScanner.start();
 
     function verificarQR(texto) {
-  try {
-    const dni = texto.trim(); // solo DNI escaneado
-    const persona = datosValidos.find(d => d[2] === dni);
+      const dni = texto.trim();
+      const persona = datosValidos.find(d => d[2] === dni);
 
-    if (!persona) {
-      mostrarMensaje("❌ DNI no encontrado: " + dni, 'error');
-      return;
+      if (!persona) {
+        mostrarMensaje("❌ DNI no encontrado: " + dni, 'error');
+        return;
+      }
+
+      const [nombre, apellido] = persona;
+
+      if (ingresados.includes(dni)) {
+        mostrarMensaje("❌ Ya ingresó: " + nombre + " " + apellido, 'error');
+      } else {
+        ingresados.push(dni);
+        mostrarMensaje("✔️ Ingreso autorizado: " + nombre + " " + apellido, 'ok');
+      }
     }
-
-    const [nombre, apellido] = persona;
-
-    if (ingresados.includes(dni)) {
-      mostrarMensaje("❌ Ya ingresó: " + nombre + " " + apellido, 'error');
-    } else {
-      ingresados.push(dni);
-      mostrarMensaje("✔️ Ingreso autorizado: " + nombre + " " + apellido, 'ok');
-    }
-  } catch (err) {
-    mostrarMensaje("QR inválido", 'error');
-  }
-}
 
     function mostrarMensaje(mensaje, tipo) {
       const div = document.getElementById('status');
