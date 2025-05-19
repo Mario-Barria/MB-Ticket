@@ -11,211 +11,57 @@
       --secondary: #3498db;
       --success: #27ae60;
       --danger: #e74c3c;
+      --warning: #f39c12;
       --light: #ecf0f1;
       --dark: #2c3e50;
       --accent: #9b59b6;
     }
     
-    * {
-      box-sizing: border-box;
+    /* [Mantén todos los estilos anteriores...] */
+
+    /* Nuevos estilos agregados */
+    .btn-danger {
+      background: linear-gradient(to right, var(--danger), #c0392b);
     }
-    
-    body {
-      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-      margin: 0;
-      padding: 0;
-      background: linear-gradient(135deg, #f5f7fa 0%, #e8f4f8 100%);
-      color: var(--dark);
-      min-height: 100vh;
+
+    .btn-warning {
+      background: linear-gradient(to right, var(--warning), #e67e22);
     }
-    
-    .container {
-      max-width: 800px;
-      margin: 0 auto;
-      padding: 20px;
-    }
-    
-    header {
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      margin-bottom: 20px;
-      background: linear-gradient(to right, var(--primary), var(--accent));
-      padding: 15px;
-      border-radius: 10px;
-      box-shadow: 0 4px 15px rgba(0,0,0,0.1);
-      color: white;
-    }
-    
-    .logo {
-      height: 60px;
-      margin-right: 15px;
-      border-radius: 5px;
-    }
-    
-    h1 {
-      color: white;
-      margin: 0;
-      font-size: 1.5rem;
-      text-shadow: 1px 1px 3px rgba(0,0,0,0.2);
-    }
-    
-    .file-upload {
+
+    .search-box {
       background: white;
       padding: 20px;
       border-radius: 10px;
-      margin-bottom: 20px;
+      margin: 20px 0;
       box-shadow: 0 2px 10px rgba(0,0,0,0.1);
-      text-align: center;
-      border: 1px solid rgba(0,0,0,0.05);
     }
-    
-    .file-upload label {
-      display: block;
-      margin-bottom: 10px;
-      font-weight: bold;
-      font-size: 1.1rem;
-      color: var(--primary);
-    }
-    
-    .file-input {
+
+    .search-box input {
       width: 100%;
       padding: 12px;
-      border: 2px dashed #ccc;
+      margin: 10px 0;
+      border: 2px solid #ddd;
       border-radius: 5px;
       font-size: 1rem;
-      background-color: #f9f9f9;
     }
-    
-    #csvStatus {
+
+    .search-results {
+      max-height: 200px;
+      overflow-y: auto;
       margin-top: 10px;
-      font-size: 0.9rem;
-      color: var(--primary);
-    }
-    
-    #reader {
-      width: 100%;
-      max-width: 500px;
-      margin: 20px auto;
-      background: white;
-      padding: 15px;
-      border-radius: 10px;
-      box-shadow: 0 4px 15px rgba(0,0,0,0.1);
-      border: 1px solid rgba(0,0,0,0.05);
-    }
-    
-    #result {
-      display: none;
-      margin: 20px auto;
-      padding: 30px;
-      border-radius: 10px;
-      font-size: 1.5rem;
-      text-align: center;
-      max-width: 500px;
-      animation: fadeIn 0.3s ease-in-out;
-      box-shadow: 0 4px 10px rgba(0,0,0,0.1);
-    }
-    
-    @keyframes fadeIn {
-      from { opacity: 0; transform: translateY(20px); }
-      to { opacity: 1; transform: translateY(0); }
-    }
-    
-    .success {
-      background: linear-gradient(135deg, rgba(46, 204, 113, 0.1) 0%, rgba(46, 204, 113, 0.2) 100%);
-      color: var(--success);
-      border: 2px solid var(--success);
-    }
-    
-    .error {
-      background: linear-gradient(135deg, rgba(231, 76, 60, 0.1) 0%, rgba(231, 76, 60, 0.2) 100%);
-      color: var(--danger);
-      border: 2px solid var(--danger);
-    }
-    
-    .icon {
-      font-size: 4rem;
-      margin-bottom: 15px;
-      text-shadow: 1px 1px 3px rgba(0,0,0,0.2);
-    }
-    
-    button {
-      padding: 15px 25px;
-      background: linear-gradient(to right, var(--secondary), var(--accent));
-      color: white;
-      border: none;
+      border: 1px solid #eee;
       border-radius: 5px;
+      padding: 10px;
+    }
+
+    .socio-item {
+      padding: 10px;
+      border-bottom: 1px solid #eee;
       cursor: pointer;
-      margin: 20px auto;
-      font-size: 1rem;
-      font-weight: bold;
-      transition: all 0.3s;
-      width: 100%;
-      max-width: 300px;
-      display: block;
-      box-shadow: 0 4px 10px rgba(0,0,0,0.1);
     }
-    
-    button:hover {
-      transform: translateY(-2px);
-      box-shadow: 0 6px 15px rgba(0,0,0,0.15);
-    }
-    
-    button:disabled {
-      background: #bdc3c7;
-      cursor: not-allowed;
-      transform: none;
-      box-shadow: none;
-    }
-    
-    #registros {
-      margin: 30px 0;
-      background: white;
-      padding: 20px;
-      border-radius: 10px;
-      box-shadow: 0 4px 15px rgba(0,0,0,0.1);
-      border: 1px solid rgba(0,0,0,0.05);
-    }
-    
-    #registros h3 {
-      margin-top: 0;
-      color: var(--primary);
-      border-bottom: 1px solid #eee;
-      padding-bottom: 10px;
-    }
-    
-    .registro-item {
-      padding: 12px 0;
-      border-bottom: 1px solid #eee;
-      font-size: 0.9rem;
-    }
-    
-    .registro-item:last-child {
-      border-bottom: none;
-    }
-    
-    @media (max-width: 600px) {
-      h1 {
-        font-size: 1.3rem;
-      }
-      
-      #result {
-        padding: 20px;
-        font-size: 1.2rem;
-      }
-      
-      .icon {
-        font-size: 3rem;
-      }
-      
-      button {
-        padding: 15px;
-        font-size: 1rem;
-      }
-      
-      .file-input {
-        padding: 15px;
-      }
+
+    .socio-item:hover {
+      background-color: #f5f5f5;
     }
   </style>
 </head>
@@ -232,6 +78,13 @@
       <p id="csvStatus">Esperando archivo CSV...</p>
     </div>
 
+    <div class="search-box">
+      <h3>Búsqueda Manual</h3>
+      <input type="text" id="searchInput" placeholder="Ingrese DNI o nombre">
+      <div class="search-results" id="searchResults"></div>
+      <button id="manualRegisterBtn" class="btn-warning" disabled>Registrar Ingreso Manual</button>
+    </div>
+
     <div id="reader"></div>
     
     <div id="result">
@@ -241,153 +94,40 @@
     </div>
 
     <div id="registros">
-      <h3>Registros de Ingreso</h3>
+      <h3>Registros de Ingreso <span id="registrosCount">(0 hoy)</span></h3>
       <div id="registros-list">
         <p>No hay registros de ingreso hoy.</p>
       </div>
     </div>
 
     <button id="exportBtn" disabled>Generar Informe</button>
+    <button id="clearBtn" class="btn-danger">Limpiar Registros</button>
   </div>
 
   <audio id="successSound" src="https://assets.mixkit.co/sfx/preview/mixkit-correct-answer-tone-2870.mp3" preload="auto"></audio>
   <audio id="errorSound" src="https://assets.mixkit.co/sfx/preview/mixkit-wrong-answer-fail-notification-946.mp3" preload="auto"></audio>
 
   <script>
-    // Variables globales
-    let socios = [];
-    let registros = JSON.parse(localStorage.getItem('registros')) || [];
-    let scanner;
-    let scanning = false;
+    // [Mantén todas las variables globales anteriores...]
 
-    // Elementos del DOM
-    const csvFileInput = document.getElementById('csvFile');
-    const csvStatus = document.getElementById('csvStatus');
-    const readerDiv = document.getElementById('reader');
-    const resultDiv = document.getElementById('result');
-    const iconDiv = document.getElementById('icon');
-    const messageDiv = document.getElementById('message');
-    const detailsDiv = document.getElementById('details');
-    const registrosList = document.getElementById('registros-list');
-    const exportBtn = document.getElementById('exportBtn');
-    const successSound = document.getElementById('successSound');
-    const errorSound = document.getElementById('errorSound');
+    // Nuevos elementos del DOM
+    const searchInput = document.getElementById('searchInput');
+    const searchResults = document.getElementById('searchResults');
+    const manualRegisterBtn = document.getElementById('manualRegisterBtn');
+    const clearBtn = document.getElementById('clearBtn');
+    const registrosCount = document.getElementById('registrosCount');
 
-    // Cargar registros previos
-    actualizarRegistros();
+    // Nuevos eventos
+    searchInput.addEventListener('input', buscarSocio);
+    manualRegisterBtn.addEventListener('click', registrarManual);
+    clearBtn.addEventListener('click', limpiarRegistros);
 
-    // Evento para cargar el archivo CSV
-    csvFileInput.addEventListener('change', cargarCSV);
-
-    // Evento para exportar registros
-    exportBtn.addEventListener('click', exportarRegistros);
-
-    function cargarCSV(event) {
-      const file = event.target.files[0];
-      if (!file) return;
-
-      const reader = new FileReader();
-      reader.onload = function(e) {
-        const text = e.target.result;
-        const lines = text.split(/\r?\n/);
-        socios = lines.map(line => {
-          const parts = line.split(';');
-          return {
-            dni: parts[2]?.trim(),
-            nombre: parts[0]?.trim() + ' ' + (parts[1]?.trim() || '')
-          };
-        }).filter(socio => socio.dni?.length > 0);
-
-        csvStatus.textContent = `Archivo cargado: ${socios.length} socios registrados.`;
-        exportBtn.disabled = false;
-        iniciarEscaneo();
-      };
-      reader.readAsText(file, "UTF-8");
-    }
-
-    function iniciarEscaneo() {
-      if (scanning) return;
-      
-      scanner = new Html5Qrcode("reader");
-      
-      const config = {
-        fps: 10,
-        qrbox: 250,
-        disableFlip: true
-      };
-
-      scanner.start(
-        { facingMode: "environment" },
-        config,
-        (qrCodeMessage) => {
-          scanner.pause();
-          procesarQR(qrCodeMessage);
-          
-          setTimeout(() => {
-            scanner.resume().catch(err => {
-              console.log("Error al reanudar:", err);
-              iniciarEscaneo();
-            });
-          }, 2000);
-        },
-        (error) => {
-          console.log("Error de escaneo:", error);
-        }
-      ).then(() => {
-        scanning = true;
-      }).catch(err => {
-        console.error("Error al iniciar:", err);
-        alert("Error al iniciar cámara: " + err.message);
-      });
-    }
-
-    function procesarQR(qrCodeMessage) {
-      const dni = extraerDniDesdeUrl(qrCodeMessage);
-      const socio = socios.find(s => s.dni === dni);
-      const registroExistente = registros.find(r => r.dni === dni && esHoy(r.fecha));
-      
-      if (registroExistente) {
-        mostrarResultado('error', '❌ QR ya ingresó', `DNI: ${dni}<br>${registroExistente.fecha}`);
-        errorSound.play();
-      } else if (socio) {
-        const registro = {
-          dni: dni,
-          nombre: socio.nombre,
-          fecha: new Date().toLocaleString()
-        };
-        registros.push(registro);
-        localStorage.setItem('registros', JSON.stringify(registros));
-        actualizarRegistros();
-        
-        mostrarResultado('success', '✅ Ingreso registrado', `Nombre: ${socio.nombre}<br>DNI: ${dni}`);
-        successSound.play();
-      } else {
-        mostrarResultado('error', '❌ No es socio', `Código escaneado: ${qrCodeMessage}`);
-        errorSound.play();
-      }
-    }
-
-    function mostrarResultado(tipo, icono, mensaje, detalles = '') {
-      resultDiv.className = tipo;
-      resultDiv.style.display = 'block';
-      iconDiv.innerHTML = icono;
-      messageDiv.innerHTML = mensaje;
-      detailsDiv.innerHTML = detalles;
-      
-      resultDiv.scrollIntoView({ behavior: 'smooth', block: 'center' });
-    }
-
-    function extraerDniDesdeUrl(qrContent) {
-      try {
-        const url = new URL(qrContent);
-        return url.searchParams.get("id") || qrContent;
-      } catch (e) {
-        return qrContent.trim();
-      }
-    }
+    // [Mantén todas las funciones anteriores hasta actualizarRegistros()...]
 
     function actualizarRegistros() {
       const registrosHoy = registros.filter(r => esHoy(r.fecha));
+      registrosCount.textContent = `(${registrosHoy.length} hoy)`;
+      
       if (registrosHoy.length === 0) {
         registrosList.innerHTML = '<p>No hay registros de ingreso hoy.</p>';
       } else {
@@ -400,36 +140,91 @@
       }
     }
 
-    function esHoy(fechaStr) {
-      const fechaRegistro = new Date(fechaStr);
-      const hoy = new Date();
-      return fechaRegistro.getDate() === hoy.getDate() && 
-             fechaRegistro.getMonth() === hoy.getMonth() && 
-             fechaRegistro.getFullYear() === hoy.getFullYear();
-    }
-
-    function exportarRegistros() {
-      const registrosHoy = registros.filter(r => esHoy(r.fecha));
-      if (registrosHoy.length === 0) {
-        alert('No hay registros para exportar hoy');
+    // Nueva función: Búsqueda de socios
+    function buscarSocio() {
+      const query = searchInput.value.toLowerCase();
+      if (query.length < 2) {
+        searchResults.innerHTML = '';
+        manualRegisterBtn.disabled = true;
         return;
       }
 
-      let csvContent = "Fecha y hora;Nombre;DNI\n";
-      registrosHoy.forEach(r => {
-        csvContent += `${r.fecha};"${r.nombre}";${r.dni}\n`;
-      });
+      const resultados = socios.filter(socio => 
+        socio.dni.includes(query) || 
+        socio.nombre.toLowerCase().includes(query)
+      );
 
-      const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-      const url = URL.createObjectURL(blob);
-      const link = document.createElement('a');
-      link.setAttribute('href', url);
-      link.setAttribute('download', `registros_ingreso_${new Date().toLocaleDateString()}.csv`);
-      link.style.visibility = 'hidden';
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
+      if (resultados.length > 0) {
+        searchResults.innerHTML = resultados.map(socio => `
+          <div class="socio-item" data-dni="${socio.dni}">
+            <strong>${socio.nombre}</strong><br>
+            DNI: ${socio.dni}
+          </div>
+        `).join('');
+
+        // Agregar evento click a los resultados
+        document.querySelectorAll('.socio-item').forEach(item => {
+          item.addEventListener('click', () => {
+            const dni = item.getAttribute('data-dni');
+            searchInput.value = dni;
+            searchResults.innerHTML = '';
+            manualRegisterBtn.disabled = false;
+          });
+        });
+      } else {
+        searchResults.innerHTML = '<p>No se encontraron socios</p>';
+        manualRegisterBtn.disabled = true;
+      }
     }
+
+    // Nueva función: Registro manual
+    function registrarManual() {
+      const dni = searchInput.value.trim();
+      const socio = socios.find(s => s.dni === dni);
+      
+      if (!socio) {
+        mostrarResultado('error', '❌ No encontrado', 'Verifique el DNI ingresado');
+        errorSound.play();
+        return;
+      }
+
+      const registroExistente = registros.find(r => r.dni === dni && esHoy(r.fecha));
+      if (registroExistente) {
+        mostrarResultado('error', '❌ Ya ingresó', `DNI: ${dni}<br>${registroExistente.fecha}`);
+        errorSound.play();
+        return;
+      }
+
+      const registro = {
+        dni: dni,
+        nombre: socio.nombre,
+        fecha: new Date().toLocaleString()
+      };
+      
+      registros.push(registro);
+      localStorage.setItem('registros', JSON.stringify(registros));
+      actualizarRegistros();
+      
+      mostrarResultado('success', '✅ Registrado', `Nombre: ${socio.nombre}<br>DNI: ${dni}`);
+      successSound.play();
+      
+      // Limpiar búsqueda
+      searchInput.value = '';
+      searchResults.innerHTML = '';
+      manualRegisterBtn.disabled = true;
+    }
+
+    // Nueva función: Limpiar registros
+    function limpiarRegistros() {
+      if (confirm('¿Está seguro que desea borrar TODOS los registros de hoy?')) {
+        registros = registros.filter(r => !esHoy(r.fecha));
+        localStorage.setItem('registros', JSON.stringify(registros));
+        actualizarRegistros();
+        mostrarResultado('success', '✓', 'Registros de hoy borrados');
+      }
+    }
+
+    // [Mantén el resto de las funciones...]
   </script>
 </body>
 </html>
