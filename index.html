@@ -1,47 +1,198 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
+    <link rel="manifest" href="manifest.json">
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Control de Acceso - Estadio</title>
-    <!-- Usamos CDN confiable para el scanner QR -->
-    <script src="https://cdn.jsdelivr.net/npm/html5-qrcode@2.3.8/dist/html5-qrcode.min.js"></script>
+    <!-- CDN actualizado para el scanner QR -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html5-qrcode/2.3.8/html5-qrcode.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
     <style>
+        :root {
+            --primary: #2c3e50;
+            --secondary: #2980b9;
+            --success: #27ae60;
+            --danger: #e74c3c;
+            --info: #3498db;
+            --light: #ecf0f1;
+            --dark: #2c3e50;
+        }
+        
         body {
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
             margin: 0;
             padding: 20px;
             background-color: #f5f7fa;
-            color: #2c3e50;
+            color: var(--dark);
         }
+        
         .container {
             max-width: 1000px;
             margin: 0 auto;
         }
+        
         header {
             text-align: center;
             margin-bottom: 20px;
         }
+        
         .logo {
             height: 80px;
             margin-bottom: 10px;
         }
+        
+        .panel {
+            background: white;
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+        }
+        
+        .panel-title {
+            margin-top: 0;
+            color: var(--primary);
+            border-bottom: 1px solid #eee;
+            padding-bottom: 10px;
+        }
+        
+        .file-upload {
+            margin-bottom: 15px;
+        }
+        
+        .file-upload label {
+            display: inline-block;
+            background: var(--secondary);
+            color: white;
+            padding: 10px 15px;
+            border-radius: 5px;
+            cursor: pointer;
+            margin-right: 10px;
+        }
+        
+        .file-upload input {
+            display: none;
+        }
+        
+        .file-status {
+            margin-top: 10px;
+            font-weight: bold;
+        }
+        
         #reader {
             width: 100%;
             max-width: 500px;
             margin: 20px auto;
-            background: #fff;
+            background: white;
             padding: 15px;
             border-radius: 8px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+            min-height: 300px;
         }
+        
+        #result {
+            display: none;
+            margin: 20px auto;
+            padding: 20px;
+            border-radius: 8px;
+            text-align: center;
+            max-width: 500px;
+        }
+        
+        .success {
+            background-color: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+        
+        .error {
+            background-color: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+        
         button {
-            padding: 10px 15px;
-            background: #2980b9;
-            color: white;
+            padding: 12px 20px;
+            color: white !important;
             border: none;
             border-radius: 5px;
             cursor: pointer;
             margin: 10px auto;
+            font-weight: bold;
+            width: 100%;
+            max-width: 300px;
+            display: block;
+            transition: all 0.3s;
+        }
+        
+        button:hover {
+            opacity: 0.9;
+            transform: translateY(-2px);
+        }
+        
+        #exportBtn {
+            background: var(--secondary);
+        }
+        
+        #clearBtn {
+            background: var(--danger);
+        }
+        
+        #manualRegisterBtn {
+            background: var(--success);
+        }
+        
+        #importWebBtn {
+            background: var(--info);
+        }
+        
+        .search-box {
+            margin-bottom: 15px;
+        }
+        
+        #searchInput {
+            width: 100%;
+            padding: 10px;
+            margin-bottom: 10px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+        }
+        
+        #registros-list {
+            max-height: 300px;
+            overflow-y: auto;
+        }
+        
+        .registro-item {
+            padding: 10px 0;
+            border-bottom: 1px solid #eee;
+        }
+        
+        .tabs {
+            display: flex;
+            margin-bottom: 20px;
+            border-bottom: 1px solid #ddd;
+        }
+        
+        .tab {
+            padding: 10px 20px;
+            cursor: pointer;
+            background: #f1f1f1;
+            margin-right: 5px;
+            border-radius: 5px 5px 0 0;
+        }
+        
+        .tab.active {
+            background: var(--secondary);
+            color: white;
+        }
+        
+        .tab-content {
+            display: none;
+        }
+        
+        .tab-content.active {
             display: block;
         }
     </style>
@@ -49,55 +200,236 @@
 <body>
     <div class="container">
         <header>
+            <img src="Logo MB-ticket.png" alt="Logo" class="logo">
             <h1>Control de Acceso - Estadio</h1>
         </header>
-        
-        <div id="reader"></div>
-        <div id="result" style="display:none;"></div>
-        
-        <button id="startBtn">Iniciar Escáner</button>
-        <div id="registros"></div>
+
+        <div class="tabs">
+            <div class="tab active" data-tab="ingreso">Registro de Ingresos</div>
+            <div class="tab" data-tab="importar">Importar Entradas Web</div>
+        </div>
+
+        <!-- Pestaña de Ingreso -->
+        <div id="ingreso" class="tab-content active">
+            <div class="panel">
+                <h3 class="panel-title">Carga de Socios</h3>
+                <div class="file-upload">
+                    <label for="csvFile">Seleccionar listado de socios (CSV)</label>
+                    <input type="file" id="csvFile" accept=".csv">
+                    <p id="csvStatus" class="file-status">Esperando archivo CSV...</p>
+                </div>
+            </div>
+
+            <div class="panel">
+                <h3 class="panel-title">Búsqueda Manual</h3>
+                <div class="search-box">
+                    <input type="text" id="searchInput" placeholder="Buscar por DNI o nombre (mínimo 3 caracteres)">
+                    <div id="resultsList"></div>
+                    <button id="manualRegisterBtn" disabled>Registrar Ingreso Manual</button>
+                </div>
+            </div>
+
+            <div class="panel">
+                <h3 class="panel-title">Escaneo de Carnets</h3>
+                <div id="reader"></div>
+                <div id="result"></div>
+            </div>
+        </div>
+
+        <!-- Pestaña de Importación -->
+        <div id="importar" class="tab-content">
+            <div class="panel">
+                <h3 class="panel-title">Importar Entradas Web</h3>
+                <div class="file-upload">
+                    <label for="webSalesFile">Seleccionar archivo de ventas web (Excel/CSV)</label>
+                    <input type="file" id="webSalesFile" accept=".csv,.xlsx,.xls">
+                    <p id="webSalesStatus" class="file-status">Esperando archivo de ventas web...</p>
+                </div>
+                <button id="importWebBtn" disabled>Importar Entradas</button>
+            </div>
+        </div>
+
+        <div class="panel">
+            <h3 class="panel-title">Registros de Hoy</h3>
+            <div id="registros-list"></div>
+            <button id="exportBtn">Generar Informe</button>
+            <button id="clearBtn">Limpiar Registros</button>
+        </div>
     </div>
 
+    <audio id="successSound" src="https://assets.mixkit.co/sfx/preview/mixkit-correct-answer-tone-2870.mp3"></audio>
+    <audio id="errorSound" src="https://assets.mixkit.co/sfx/preview/mixkit-wrong-answer-fail-notification-946.mp3"></audio>
+
     <script>
-    // Versión mínima funcional
-    let scanner;
-    const startBtn = document.getElementById('startBtn');
-    
-    startBtn.addEventListener('click', () => {
-        if (scanner) {
-            scanner.stop();
-            scanner = null;
-            startBtn.textContent = 'Iniciar Escáner';
-        } else {
-            iniciarEscaneo();
-            startBtn.textContent = 'Detener Escáner';
-        }
-    });
+        // Variables globales
+        let socios = [];
+        let registros = JSON.parse(localStorage.getItem('registros')) || [];
+        let scanner;
+        let selectedSocio = null;
 
-    function iniciarEscaneo() {
-        scanner = new Html5Qrcode("reader");
-        scanner.start(
-            { facingMode: "environment" },
-            { fps: 10, qrbox: 250 },
-            qrCodeMessage => {
-                mostrarResultado(`Escaneado: ${qrCodeMessage}`);
-                document.getElementById('registros').innerHTML += 
-                    `<p>${new Date().toLocaleTimeString()}: ${qrCodeMessage}</p>`;
-            },
-            errorMessage => console.log("Error:", errorMessage)
-        ).catch(err => {
-            console.error("Error al iniciar:", err);
-            mostrarResultado("Error al iniciar cámara");
+        // Elementos del DOM
+        const csvFile = document.getElementById('csvFile');
+        const csvStatus = document.getElementById('csvStatus');
+        const searchInput = document.getElementById('searchInput');
+        const manualRegisterBtn = document.getElementById('manualRegisterBtn');
+        const tabs = document.querySelectorAll('.tab');
+        const tabContents = document.querySelectorAll('.tab-content');
+
+        // Inicialización
+        document.addEventListener('DOMContentLoaded', function() {
+            actualizarRegistros();
+            
+            // Eventos
+            csvFile.addEventListener('change', cargarSociosCSV);
+            searchInput.addEventListener('input', buscarSocios);
+            manualRegisterBtn.addEventListener('click', registrarManual);
+            
+            // Tabs
+            tabs.forEach(tab => {
+                tab.addEventListener('click', () => {
+                    tabs.forEach(t => t.classList.remove('active'));
+                    tabContents.forEach(c => c.classList.remove('active'));
+                    
+                    tab.classList.add('active');
+                    document.getElementById(tab.dataset.tab).classList.add('active');
+                });
+            });
         });
-    }
 
-    function mostrarResultado(mensaje) {
-        const result = document.getElementById('result');
-        result.textContent = mensaje;
-        result.style.display = 'block';
-        setTimeout(() => result.style.display = 'none', 3000);
-    }
+        // Cargar socios desde CSV
+        function cargarSociosCSV(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                try {
+                    const content = e.target.result;
+                    socios = content.split('\n')
+                        .filter(line => line.trim() !== '')
+                        .map(line => {
+                            const [nombre, apellido, dni] = line.split(';');
+                            return {
+                                nombre: `${nombre.trim()} ${apellido.trim()}`,
+                                dni: dni.trim()
+                            };
+                        });
+
+                    csvStatus.textContent = `✅ Socios cargados: ${socios.length}`;
+                    csvStatus.style.color = "green";
+                    iniciarEscaneo();
+                } catch (error) {
+                    csvStatus.textContent = "❌ Error: Formato CSV inválido";
+                    csvStatus.style.color = "red";
+                }
+            };
+            reader.readAsText(file);
+        }
+
+        // Iniciar escáner
+        function iniciarEscaneo() {
+            if (scanner) return;
+            
+            scanner = new Html5Qrcode("reader");
+            scanner.start(
+                { facingMode: "environment" },
+                { fps: 10, qrbox: 250 },
+                qrCodeMessage => {
+                    procesarQR(qrCodeMessage);
+                    setTimeout(() => {
+                        scanner.stop().then(() => {
+                            scanner = null;
+                            iniciarEscaneo();
+                        });
+                    }, 1000);
+                },
+                errorMessage => console.log("Error:", errorMessage)
+            ).catch(err => console.error("Error al iniciar:", err));
+        }
+
+        // Procesar QR
+        function procesarQR(qrContent) {
+            const dni = qrContent.split('=')[1] || qrContent;
+            const socio = socios.find(s => s.dni === dni.trim());
+            
+            if (!socio) {
+                mostrarResultado('error', '❌ No registrado', `DNI: ${dni}`);
+                document.getElementById('errorSound').play();
+                return;
+            }
+
+            const registro = {
+                dni: socio.dni,
+                nombre: socio.nombre,
+                fecha: new Date().toLocaleString(),
+                tipo: "carnet"
+            };
+            
+            registros.push(registro);
+            localStorage.setItem('registros', JSON.stringify(registros));
+            actualizarRegistros();
+            mostrarResultado('success', '✅ Registrado', socio.nombre);
+            document.getElementById('successSound').play();
+        }
+
+        // Buscar socios
+        function buscarSocios() {
+            const query = searchInput.value.trim().toLowerCase();
+            if (query.length < 3) return;
+
+            const resultados = socios.filter(socio => 
+                socio.dni.includes(query) || 
+                socio.nombre.toLowerCase().includes(query)
+            );
+
+            // Mostrar resultados (implementación básica)
+            if (resultados.length > 0) {
+                selectedSocio = resultados[0];
+                manualRegisterBtn.disabled = false;
+            }
+        }
+
+        // Registrar manualmente
+        function registrarManual() {
+            if (!selectedSocio) return;
+
+            const registro = {
+                dni: selectedSocio.dni,
+                nombre: selectedSocio.nombre,
+                fecha: new Date().toLocaleString(),
+                tipo: "manual"
+            };
+            
+            registros.push(registro);
+            localStorage.setItem('registros', JSON.stringify(registros));
+            actualizarRegistros();
+            mostrarResultado('success', '✅ Registrado', selectedSocio.nombre);
+        }
+
+        // Actualizar registros
+        function actualizarRegistros() {
+            const registrosHoy = registros.filter(r => r.fecha);
+            document.getElementById('registros-list').innerHTML = registrosHoy
+                .map(r => `
+                    <div class="registro-item">
+                        <strong>${r.fecha}</strong><br>
+                        ${r.nombre} (DNI: ${r.dni})
+                    </div>
+                `)
+                .join('') || '<p>No hay registros aún.</p>';
+        }
+
+        // Mostrar resultado
+        function mostrarResultado(tipo, icono, mensaje) {
+            const result = document.getElementById('result');
+            result.innerHTML = `
+                <div class="icon">${icono}</div>
+                <div>${mensaje}</div>
+            `;
+            result.className = tipo;
+            result.style.display = 'block';
+            setTimeout(() => result.style.display = 'none', 3000);
+        }
     </script>
 </body>
 </html>
