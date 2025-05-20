@@ -12,13 +12,17 @@
             background-color: #f5f7fa;
             text-align: center;
         }
-        #reader {
+        #scanner-container {
             width: 100%;
             max-width: 500px;
-            height: 300px;
             margin: 20px auto;
+        }
+        #reader {
+            width: 100%;
+            height: 300px;
             background: #eee;
             border: 2px dashed #ccc;
+            margin-bottom: 20px;
             display: flex;
             align-items: center;
             justify-content: center;
@@ -33,126 +37,177 @@
             cursor: pointer;
             margin: 10px;
         }
-        #errorMsg {
-            color: red;
+        #status {
             margin: 15px;
             font-weight: bold;
+            min-height: 20px;
+        }
+        #registros {
+            margin-top: 20px;
+            text-align: left;
+            max-width: 500px;
+            margin-left: auto;
+            margin-right: auto;
         }
     </style>
 </head>
 <body>
     <h1>Control de Acceso - Estadio</h1>
-    <div id="reader">Preparando escáner QR...</div>
-    <button id="scannerBtn">Iniciar Escáner</button>
-    <div id="errorMsg"></div>
+    
+    <div id="scanner-container">
+        <div id="reader">Área del escáner</div>
+        <div id="status">Presiona "Iniciar Escáner" para comenzar</div>
+        <button id="scannerBtn">Iniciar Escáner</button>
+    </div>
+    
     <div id="registros"></div>
 
-    <!-- Versión específica que sabemos que funciona -->
-    <script src="https://cdn.jsdelivr.net/npm/html5-qrcode@2.3.4/dist/html5-qrcode.min.js"></script>
+    <!-- Usamos CDN oficial de html5-qrcode -->
+    <script src="https://unpkg.com/html5-qrcode@2.3.8/dist/html5-qrcode.min.js"></script>
     
     <script>
-        // Elementos del DOM
+        // =============================================
+        // VERIFICACIÓN INICIAL DEL DOM
+        // =============================================
+        console.log("Iniciando aplicación...");
+        
         const scannerBtn = document.getElementById('scannerBtn');
         const readerDiv = document.getElementById('reader');
-        const errorDiv = document.getElementById('errorMsg');
+        const statusDiv = document.getElementById('status');
         const registrosDiv = document.getElementById('registros');
-        let scanner = null;
-
-        // Verificar que todos los elementos existan
-        if (!scannerBtn || !readerDiv) {
-            showError("Error crítico: No se encontraron elementos esenciales");
-            return;
+        
+        // Verificar elementos críticos
+        if (!scannerBtn || !readerDiv || !statusDiv || !registrosDiv) {
+            const errorMsg = "Error: Elementos HTML faltantes. Revisa los IDs en el código.";
+            console.error(errorMsg);
+            document.body.innerHTML = `<h1 style="color:red">${errorMsg}</h1>`;
+            throw new Error(errorMsg);
+        } else {
+            console.log("Todos los elementos HTML encontrados correctamente");
         }
 
-        // Configurar botón
-        scannerBtn.addEventListener('click', toggleScanner);
-
-        async function toggleScanner() {
+        // =============================================
+        // CONFIGURACIÓN DEL ESCÁNER
+        // =============================================
+        let scanner = null;
+        
+        scannerBtn.addEventListener('click', async () => {
             try {
                 if (scanner) {
-                    // Detener escáner
-                    await scanner.stop();
-                    scanner = null;
-                    scannerBtn.textContent = 'Iniciar Escáner';
-                    readerDiv.innerHTML = 'Escáner detenido';
-                    return;
+                    await stopScanner();
+                } else {
+                    await startScanner();
                 }
+            } catch (error) {
+                handleError(error);
+            }
+        });
 
-                // Iniciar escáner
-                scannerBtn.disabled = true;
-                readerDiv.innerHTML = 'Iniciando cámara...';
-                errorDiv.textContent = '';
-                
+        async function startScanner() {
+            console.log("Intentando iniciar escáner...");
+            statusDiv.textContent = "Iniciando cámara...";
+            scannerBtn.disabled = true;
+            
+            try {
                 scanner = new Html5Qrcode("reader");
                 
                 await scanner.start(
-                    { facingMode: "environment" }, 
                     { 
-                        fps: 10, 
-                        qrbox: { width: 250, height: 250 } 
+                        facingMode: "environment" 
+                    }, 
+                    {
+                        fps: 10,
+                        qrbox: { width: 250, height: 250 }
                     },
                     qrCodeMessage => {
-                        registrosDiv.innerHTML += `<p>✅ Escaneado: ${qrCodeMessage}</p>`;
+                        handleScanSuccess(qrCodeMessage);
                     },
-                    errorMessage => {
-                        console.log("Error durante escaneo:", errorMessage);
+                    qrCodeError => {
+                        console.log("Error durante escaneo:", qrCodeError);
                     }
                 );
                 
-                scannerBtn.textContent = 'Detener Escáner';
-                scannerBtn.disabled = false;
+                scannerBtn.textContent = "Detener Escáner";
+                statusDiv.textContent = "Escáner listo - Apunta a un código QR";
+                console.log("Escáner iniciado correctamente");
                 
-            } catch (err) {
-                handleScannerError(err);
+            } catch (error) {
+                await handleCameraError(error);
+            } finally {
+                scannerBtn.disabled = false;
             }
         }
 
-        function handleScannerError(err) {
-            console.error("Error del escáner:", err);
-            scanner = null;
-            scannerBtn.textContent = 'Iniciar Escáner';
-            scannerBtn.disabled = false;
+        async function stopScanner() {
+            console.log("Deteniendo escáner...");
+            statusDiv.textContent = "Deteniendo cámara...";
+            scannerBtn.disabled = true;
             
-            // Mensajes de error amigables
-            if (err.name === 'NotAllowedError') {
-                showError("Error: Permiso de cámara denegado. Por favor habilita los permisos.");
-            } else if (err.name === 'NotFoundError') {
-                showError("Error: No se encontró cámara trasera. Usando cámara frontal...");
-                tryFrontCamera();
-            } else {
-                showError(`Error técnico: ${err.message}`);
-            }
-        }
-
-        async function tryFrontCamera() {
             try {
-                readerDiv.innerHTML = 'Intentando con cámara frontal...';
-                scanner = new Html5Qrcode("reader");
+                await scanner.stop();
+                scanner = null;
+                readerDiv.innerHTML = "Área del escáner";
+                scannerBtn.textContent = "Iniciar Escáner";
+                statusDiv.textContent = "Escáner detenido";
+                console.log("Escáner detenido correctamente");
                 
-                await scanner.start(
-                    { facingMode: "user" }, 
-                    { fps: 10, qrbox: 250 },
-                    qrCodeMessage => {
-                        registrosDiv.innerHTML += `<p>✅ Escaneado: ${qrCodeMessage}</p>`;
-                    },
-                    errorMessage => console.log("Error escaneo:", errorMessage)
-                );
-                
-                scannerBtn.textContent = 'Detener Escáner';
+            } catch (error) {
+                handleError(error);
+                statusDiv.textContent = "Error al detener escáner";
+            } finally {
                 scannerBtn.disabled = false;
-                
-            } catch (frontErr) {
-                showError("No se pudo acceder a ninguna cámara. Verifica los permisos.");
-                readerDiv.innerHTML = 'Error al acceder a la cámara';
             }
         }
 
-        function showError(msg) {
-            errorDiv.textContent = msg;
-            console.error(msg);
+        function handleScanSuccess(qrCodeMessage) {
+            console.log("Código escaneado:", qrCodeMessage);
+            registrosDiv.innerHTML += `<div class="registro">
+                <strong>${new Date().toLocaleString()}</strong><br>
+                ${qrCodeMessage}
+            </div>`;
+            statusDiv.textContent = "¡Código escaneado correctamente!";
+            
+            // Feedback visual
+            readerDiv.style.border = "2px solid green";
+            setTimeout(() => {
+                readerDiv.style.border = "2px dashed #ccc";
+            }, 500);
+        }
+
+        async function handleCameraError(error) {
+            console.error("Error de cámara:", error);
+            
+            if (error.message.includes("NotAllowedError")) {
+                statusDiv.textContent = "ERROR: Permiso de cámara denegado. Por favor habilita los permisos.";
+                statusDiv.style.color = "red";
+            } else if (error.message.includes("NotFoundError")) {
+                statusDiv.textContent = "ERROR: No se encontró cámara. Conecta una cámara e intenta nuevamente.";
+                statusDiv.style.color = "red";
+            } else {
+                statusDiv.textContent = `ERROR: ${error.message}`;
+                statusDiv.style.color = "red";
+            }
+            
+            if (scanner) {
+                try {
+                    await scanner.stop();
+                } catch (stopError) {
+                    console.error("Error al detener escáner:", stopError);
+                }
+                scanner = null;
+            }
+            
+            scannerBtn.textContent = "Iniciar Escáner";
+        }
+
+        function handleError(error) {
+            console.error("Error general:", error);
+            statusDiv.textContent = `ERROR: ${error.message}`;
+            statusDiv.style.color = "red";
         }
 
         console.log("Aplicación inicializada correctamente");
+        statusDiv.textContent = "Presiona 'Iniciar Escáner' para comenzar";
     </script>
 </body>
 </html>
