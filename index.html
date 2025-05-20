@@ -14,49 +14,96 @@
         .container {
             max-width: 1000px;
             margin: 0 auto;
+            text-align: center;
         }
         #reader {
             width: 100%;
             max-width: 500px;
+            height: 300px;
             margin: 20px auto;
-            background: white;
-            padding: 15px;
-            border-radius: 8px;
+            background: #eee;
+            border: 2px dashed #ccc;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #666;
+        }
+        button {
+            padding: 10px 20px;
+            background: #2980b9;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 16px;
         }
     </style>
 </head>
 <body>
     <div class="container">
         <h1>Control de Acceso - Estadio</h1>
-        <div id="reader"></div>
+        <div id="reader">Área del escáner - Haz clic en Iniciar</div>
+        <button id="startBtn">Iniciar Escáner</button>
         <div id="registros"></div>
     </div>
 
+    <!-- Usamos la versión más estable del scanner -->
     <script src="https://cdn.jsdelivr.net/npm/html5-qrcode@2.3.8/dist/html5-qrcode.min.js"></script>
+    
     <script>
-        // VERSIÓN MÍNIMA FUNCIONAL
-        console.log("La página se cargó correctamente");
-        
+        // VERSIÓN SUPER SIMPLIFICADA PERO FUNCIONAL
         const registrosDiv = document.getElementById('registros');
-        if (!registrosDiv) {
-            console.error("ERROR CRÍTICO: No se encontró el div 'registros'");
-            document.body.innerHTML = '<h1 style="color:red">Error: Falta elemento crítico</h1>';
-        } else {
-            registrosDiv.innerHTML = '<p>Prueba de que el DOM funciona</p>';
-            
-            // Prueba básica del escáner
-            const html5Qrcode = new Html5Qrcode("reader");
-            html5Qrcode.start(
-                { facingMode: "environment" },
-                { fps: 10, qrbox: 250 },
-                qrCodeMessage => {
-                    registrosDiv.innerHTML += `<p>Escaneado: ${qrCodeMessage}</p>`;
-                },
-                errorMessage => console.log("Error escaneo:", errorMessage)
-            ).catch(err => {
-                console.error("Error iniciar escáner:", err);
-                registrosDiv.innerHTML += '<p style="color:red">Error al iniciar cámara</p>';
+        const readerDiv = document.getElementById('reader');
+        const startBtn = document.getElementById('startBtn');
+        let scanner = null;
+
+        // 1. Verificamos que todos los elementos existan
+        if (!readerDiv || !startBtn || !registrosDiv) {
+            document.body.innerHTML += '<h2 style="color:red">¡Error crítico! Faltan elementos esenciales</h2>';
+            console.error("Elementos faltantes:", {
+                reader: !!readerDiv, 
+                button: !!startBtn, 
+                registros: !!registrosDiv
             });
+        } else {
+            // 2. Configuramos el botón de inicio
+            startBtn.addEventListener('click', toggleScanner);
+            
+            // 3. Función principal del escáner
+            function toggleScanner() {
+                if (scanner) {
+                    scanner.stop().then(() => {
+                        scanner = null;
+                        startBtn.textContent = 'Iniciar Escáner';
+                        readerDiv.innerHTML = 'Área del escáner - Haz clic en Iniciar';
+                    });
+                } else {
+                    startBtn.textContent = 'Detener Escáner';
+                    readerDiv.innerHTML = 'Iniciando cámara...';
+                    
+                    scanner = new Html5Qrcode("reader");
+                    scanner.start(
+                        { facingMode: "environment" },
+                        { 
+                            fps: 10,
+                            qrbox: { width: 250, height: 250 }
+                        },
+                        qrCodeMessage => {
+                            registrosDiv.innerHTML += `<p>✅ Escaneado: ${qrCodeMessage}</p>`;
+                        },
+                        errorMessage => {
+                            console.log("Error escaneo:", errorMessage);
+                        }
+                    ).catch(err => {
+                        console.error("Error al iniciar:", err);
+                        readerDiv.innerHTML = `Error: ${err.message}`;
+                        scanner = null;
+                        startBtn.textContent = 'Iniciar Escáner';
+                    });
+                }
+            }
+            
+            console.log("La aplicación está lista para usar");
         }
     </script>
 </body>
