@@ -23,9 +23,6 @@
             background: #eee;
             border: 2px dashed #ccc;
             margin-bottom: 20px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
         }
         button {
             padding: 12px 24px;
@@ -35,7 +32,6 @@
             border-radius: 5px;
             font-size: 16px;
             cursor: pointer;
-            margin: 10px;
         }
         #status {
             margin: 15px;
@@ -43,120 +39,107 @@
             min-height: 20px;
         }
     </style>
-    
-    <!-- Cargamos la librería de forma ASÍNCRONA para evitar bloqueos -->
-    <script src="https://cdn.jsdelivr.net/npm/html5-qrcode@2.3.8/dist/html5-qrcode.min.js" 
-            async 
-            onload="console.log('Librería QR cargada correctamente')"
-            onerror="cargarRespaldo()"></script>
-    
-    <script>
-        // Función de respaldo si falla el CDN principal
-        function cargarRespaldo() {
-            console.log("Falló CDN principal, cargando respaldo...");
-            const script = document.createElement('script');
-            script.src = 'https://esm.run/html5-qrcode@2.3.4';
-            script.onload = function() {
-                console.log("Librería QR (respaldo) cargada correctamente");
-                iniciarAplicacion();
-            };
-            script.onerror = function() {
-                console.error("Error al cargar respaldo");
-                mostrarError("No se pudo cargar el escáner QR. Intenta recargar o usa otro navegador.");
-            };
-            document.head.appendChild(script);
-        }
-        
-        // Función para mostrar errores
-        function mostrarError(mensaje) {
-            const statusDiv = document.getElementById('status');
-            if (statusDiv) {
-                statusDiv.textContent = mensaje;
-                statusDiv.style.color = "red";
-            }
-            console.error(mensaje);
-        }
-        
-        // Verificación diferida de la librería
-        function verificarLibreria() {
-            if (typeof Html5Qrcode === 'undefined') {
-                console.log("Librería no cargada aún, intentando respaldo...");
-                cargarRespaldo();
-                return false;
-            }
-            return true;
-        }
-        
-        // Inicia la aplicación solo cuando todo esté listo
-        function iniciarAplicacion() {
-            if (!verificarLibreria()) return;
-            
-            console.log("Iniciando aplicación con QR:", Html5Qrcode.VERSION);
-            const scannerBtn = document.getElementById('scannerBtn');
-            const statusDiv = document.getElementById('status');
-            
-            if (!scannerBtn || !statusDiv) {
-                mostrarError("Error: Elementos HTML faltantes");
-                return;
-            }
-            
-            statusDiv.textContent = "Presiona 'Iniciar Escáner' para comenzar";
-            scannerBtn.disabled = false;
-            
-            let scanner = null;
-            
-            scannerBtn.addEventListener('click', async () => {
-                try {
-                    if (scanner) {
-                        await scanner.stop();
-                        scanner = null;
-                        scannerBtn.textContent = "Iniciar Escáner";
-                        statusDiv.textContent = "Escáner detenido";
-                        document.getElementById('reader').innerHTML = "Área del escáner";
-                    } else {
-                        scannerBtn.disabled = true;
-                        statusDiv.textContent = "Iniciando cámara...";
-                        
-                        scanner = new Html5Qrcode("reader");
-                        await scanner.start(
-                            { facingMode: "environment" },
-                            { fps: 10, qrbox: 250 },
-                            qrCodeMessage => {
-                                statusDiv.textContent = `Escaneado: ${qrCodeMessage}`;
-                                statusDiv.style.color = "green";
-                            },
-                            error => {
-                                console.log("Error escaneo:", error);
-                            }
-                        );
-                        
-                        scannerBtn.textContent = "Detener Escáner";
-                        statusDiv.textContent = "Escáner listo";
-                        scannerBtn.disabled = false;
-                    }
-                } catch (error) {
-                    mostrarError(`Error: ${error.message}`);
-                    scannerBtn.disabled = false;
-                }
-            });
-        }
-        
-        // Iniciamos la aplicación cuando todo esté listo
-        window.addEventListener('DOMContentLoaded', () => {
-            if (typeof Html5Qrcode !== 'undefined') {
-                iniciarAplicacion();
-            }
-            // Si Html5Qrcode no está definido, cargarRespaldo() se encargará
-        });
-    </script>
 </head>
 <body>
     <h1>Control de Acceso - Estadio</h1>
     
     <div id="scanner-container">
-        <div id="reader">Área del escáner</div>
-        <div id="status">Cargando escáner QR...</div>
+        <div id="reader"></div>
+        <div id="status">Preparando escáner...</div>
         <button id="scannerBtn" disabled>Iniciar Escáner</button>
     </div>
+
+    <!-- Cargamos SOLO esta versión específica de la librería -->
+    <script src="https://cdn.jsdelivr.net/npm/html5-qrcode@2.1.4/dist/html5-qrcode.min.js"></script>
+    
+    <script>
+        // Esperamos a que todo esté listo
+        document.addEventListener('DOMContentLoaded', function() {
+            const statusDiv = document.getElementById('status');
+            const scannerBtn = document.getElementById('scannerBtn');
+            let scanner = null;
+            
+            // Verificamos si la librería se cargó correctamente
+            if (typeof Html5Qrcode === 'undefined') {
+                statusDiv.textContent = "Error: No se cargó la librería QR. Recarga la página.";
+                statusDiv.style.color = "red";
+                return;
+            }
+            
+            console.log("Versión de Html5Qrcode:", Html5Qrcode.VERSION);
+            statusDiv.textContent = "Sistema listo. Haz clic en Iniciar Escáner";
+            scannerBtn.disabled = false;
+            
+            // Configuramos el botón
+            scannerBtn.addEventListener('click', function() {
+                if (scanner) {
+                    stopScanner();
+                } else {
+                    startScanner();
+                }
+            });
+            
+            // Función para iniciar el escáner
+            async function startScanner() {
+                try {
+                    scannerBtn.disabled = true;
+                    statusDiv.textContent = "Iniciando cámara...";
+                    
+                    scanner = new Html5Qrcode("reader");
+                    
+                    await scanner.start(
+                        { facingMode: "environment" },
+                        { 
+                            fps: 10,
+                            qrbox: 250 
+                        },
+                        qrCodeMessage => {
+                            statusDiv.textContent = `Escaneado: ${qrCodeMessage}`;
+                            statusDiv.style.color = "green";
+                            console.log("Código escaneado:", qrCodeMessage);
+                        },
+                        errorMessage => {
+                            console.log("Error durante escaneo:", errorMessage);
+                        }
+                    );
+                    
+                    scannerBtn.textContent = "Detener Escáner";
+                    statusDiv.textContent = "Escáner listo. Apunta a un código QR";
+                    scannerBtn.disabled = false;
+                    
+                } catch (error) {
+                    handleError(error);
+                }
+            }
+            
+            // Función para detener el escáner
+            async function stopScanner() {
+                try {
+                    scannerBtn.disabled = true;
+                    statusDiv.textContent = "Deteniendo cámara...";
+                    
+                    await scanner.stop();
+                    scanner = null;
+                    
+                    scannerBtn.textContent = "Iniciar Escáner";
+                    statusDiv.textContent = "Escáner detenido";
+                    scannerBtn.disabled = false;
+                    
+                } catch (error) {
+                    handleError(error);
+                }
+            }
+            
+            // Manejo de errores
+            function handleError(error) {
+                console.error("Error:", error);
+                statusDiv.textContent = `Error: ${error.message}`;
+                statusDiv.style.color = "red";
+                scannerBtn.textContent = "Iniciar Escáner";
+                scannerBtn.disabled = false;
+                scanner = null;
+            }
+        });
+    </script>
 </body>
 </html>
