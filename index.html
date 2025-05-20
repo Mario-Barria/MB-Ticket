@@ -1,13 +1,12 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
-    <link rel="manifest" href="manifest.json">
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Control de Acceso - Estadio</title>
-    <script src="https://unpkg.com/html5-qrcode@2.3.4/html5-qrcode.min.js"></script>
+    <!-- Usamos CDN confiable para el scanner QR -->
+    <script src="https://cdn.jsdelivr.net/npm/html5-qrcode@2.3.8/dist/html5-qrcode.min.js"></script>
     <style>
-        /* [Todo el CSS anterior] */
         body {
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
             margin: 0;
@@ -15,87 +14,87 @@
             background-color: #f5f7fa;
             color: #2c3e50;
         }
-        /* ... (todo el resto del CSS original) ... */
+        .container {
+            max-width: 1000px;
+            margin: 0 auto;
+        }
+        header {
+            text-align: center;
+            margin-bottom: 20px;
+        }
+        .logo {
+            height: 80px;
+            margin-bottom: 10px;
+        }
+        #reader {
+            width: 100%;
+            max-width: 500px;
+            margin: 20px auto;
+            background: #fff;
+            padding: 15px;
+            border-radius: 8px;
+        }
+        button {
+            padding: 10px 15px;
+            background: #2980b9;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            margin: 10px auto;
+            display: block;
+        }
     </style>
 </head>
 <body>
-    <!-- [Todo el HTML original] -->
     <div class="container">
         <header>
-            <img src="Logo MB-ticket.png" alt="Logo" class="logo">
             <h1>Control de Acceso - Estadio</h1>
         </header>
-        <!-- ... (todo el resto del HTML original) ... -->
+        
+        <div id="reader"></div>
+        <div id="result" style="display:none;"></div>
+        
+        <button id="startBtn">Iniciar Escáner</button>
+        <div id="registros"></div>
     </div>
 
-    <audio id="successSound" src="https://assets.mixkit.co/sfx/preview/mixkit-correct-answer-tone-2870.mp3"></audio>
-    <audio id="errorSound" src="https://assets.mixkit.co/sfx/preview/mixkit-wrong-answer-fail-notification-946.mp3"></audio>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
-
     <script>
-    // Versión SIMPLIFICADA y VERIFICADA
-    let socios = [];
-    let registros = JSON.parse(localStorage.getItem('registros')) || [];
+    // Versión mínima funcional
     let scanner;
-
-    document.addEventListener('DOMContentLoaded', function() {
-        actualizarRegistros();
+    const startBtn = document.getElementById('startBtn');
+    
+    startBtn.addEventListener('click', () => {
+        if (scanner) {
+            scanner.stop();
+            scanner = null;
+            startBtn.textContent = 'Iniciar Escáner';
+        } else {
+            iniciarEscaneo();
+            startBtn.textContent = 'Detener Escáner';
+        }
     });
 
     function iniciarEscaneo() {
-        if (scanner) return;
-        
         scanner = new Html5Qrcode("reader");
         scanner.start(
             { facingMode: "environment" },
             { fps: 10, qrbox: 250 },
-            decodedText => {
-                procesarQR(decodedText);
-                setTimeout(() => scanner.stop().then(() => {
-                    scanner = null;
-                    if (socios.length > 0) iniciarEscaneo();
-                }), 1000);
+            qrCodeMessage => {
+                mostrarResultado(`Escaneado: ${qrCodeMessage}`);
+                document.getElementById('registros').innerHTML += 
+                    `<p>${new Date().toLocaleTimeString()}: ${qrCodeMessage}</p>`;
             },
-            error => console.log("Error:", error)
-        ).catch(err => console.error("Error al iniciar:", err));
+            errorMessage => console.log("Error:", errorMessage)
+        ).catch(err => {
+            console.error("Error al iniciar:", err);
+            mostrarResultado("Error al iniciar cámara");
+        });
     }
 
-    function procesarQR(qrContent) {
-        const dni = qrContent.split('=')[1] || qrContent;
-        const socio = socios.find(s => s.dni === dni.trim());
-        
-        if (!socio) {
-            mostrarResultado('error', '❌ No registrado', `DNI: ${dni}`);
-            return;
-        }
-
-        const registro = {
-            dni: socio.dni,
-            nombre: socio.nombre,
-            fecha: new Date().toLocaleString(),
-            tipo: "carnet"
-        };
-        
-        registros.push(registro);
-        localStorage.setItem('registros', JSON.stringify(registros));
-        actualizarRegistros();
-        mostrarResultado('success', '✅ Registrado', socio.nombre);
-    }
-
-    function actualizarRegistros() {
-        const registrosHoy = registros.filter(r => r.fecha);
-        document.getElementById('registros-list').innerHTML = registrosHoy.map(r => `
-            <div class="registro-item">
-                <strong>${r.fecha}</strong><br>
-                ${r.nombre} (DNI: ${r.dni})
-            </div>
-        `).join('') || '<p>No hay registros aún.</p>';
-    }
-
-    function mostrarResultado(tipo, icono, mensaje) {
+    function mostrarResultado(mensaje) {
         const result = document.getElementById('result');
-        result.innerHTML = `<div class="icon">${icono}</div><div>${mensaje}</div>`;
-        result.className = tipo;
+        result.textContent = mensaje;
         result.style.display = 'block';
         setTimeout(() => result.style.display = 'none', 3000);
     }
