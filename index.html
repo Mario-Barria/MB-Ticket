@@ -1,340 +1,62 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
-    <!-- [Todo el head anterior se mantiene igual hasta el script] -->
-    <!-- ... (CSS y meta tags idénticos a versiones anteriores) ... -->
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Control de Acceso - Estadio</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            margin: 0;
+            padding: 20px;
+            background-color: #f5f7fa;
+        }
+        .container {
+            max-width: 1000px;
+            margin: 0 auto;
+        }
+        #reader {
+            width: 100%;
+            max-width: 500px;
+            margin: 20px auto;
+            background: white;
+            padding: 15px;
+            border-radius: 8px;
+        }
+    </style>
 </head>
 <body>
-    <!-- [Todo el HTML anterior se mantiene igual] -->
-    <!-- ... (Estructura completa de la interfaz) ... -->
+    <div class="container">
+        <h1>Control de Acceso - Estadio</h1>
+        <div id="reader"></div>
+        <div id="registros"></div>
+    </div>
 
+    <script src="https://cdn.jsdelivr.net/npm/html5-qrcode@2.3.8/dist/html5-qrcode.min.js"></script>
     <script>
-        // VARIABLES GLOBALES MEJORADAS
-        let socios = [];
-        let registros = JSON.parse(localStorage.getItem('registros')) || [];
-        let entradasWeb = [];
-        let scanner;
-        let selectedSocio = null;
-        let ultimoEscaneo = null;
-        const TIEMPO_ENTRE_ESCANEOS = 2000; // 2 segundos
-
-        // ELEMENTOS DEL DOM
-        const elements = {
-            csvFile: document.getElementById('csvFile'),
-            csvStatus: document.getElementById('csvStatus'),
-            webSalesFile: document.getElementById('webSalesFile'),
-            webSalesStatus: document.getElementById('webSalesStatus'),
-            searchInput: document.getElementById('searchInput'),
-            resultsList: document.getElementById('resultsList'),
-            manualRegisterBtn: document.getElementById('manualRegisterBtn'),
-            exportBtn: document.getElementById('exportBtn'),
-            clearBtn: document.getElementById('clearBtn'),
-            registrosList: document.getElementById('registros-list'),
-            importWebBtn: document.getElementById('importWebBtn')
-        };
-
-        // INICIALIZACIÓN COMPLETA
-        document.addEventListener('DOMContentLoaded', function() {
-            actualizarRegistros();
-            setupEventListeners();
-            setupTabs();
-        });
-
-        function setupEventListeners() {
-            elements.csvFile.addEventListener('change', cargarSociosCSV);
-            elements.webSalesFile.addEventListener('change', cargarEntradasWeb);
-            elements.searchInput.addEventListener('input', buscarSocios);
-            elements.manualRegisterBtn.addEventListener('click', registrarManual);
-            elements.exportBtn.addEventListener('click', exportarRegistros);
-            elements.clearBtn.addEventListener('click', limpiarRegistros);
-            elements.importWebBtn.addEventListener('click', importarEntradasWeb);
-        }
-
-        function setupTabs() {
-            document.querySelectorAll('.tab').forEach(tab => {
-                tab.addEventListener('click', () => {
-                    document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
-                    document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
-                    
-                    tab.classList.add('active');
-                    document.getElementById(tab.dataset.tab).classList.add('active');
-                });
-            });
-        }
-
-        // FUNCIONES PRINCIPALES CORREGIDAS
-
-        function cargarSociosCSV(event) {
-            const file = event.target.files[0];
-            if (!file) return;
-
-            const reader = new FileReader();
-            reader.onload = function(e) {
-                try {
-                    const content = e.target.result;
-                    socios = content.split(/\r?\n/)
-                        .filter(line => line.trim() !== '')
-                        .map(line => {
-                            const [nombre, apellido, dni] = line.split(';');
-                            return {
-                                nombre: `${nombre.trim()} ${apellido.trim()}`,
-                                dni: dni.trim()
-                            };
-                        });
-
-                    elements.csvStatus.textContent = `✅ Socios cargados: ${socios.length}`;
-                    elements.csvStatus.style.color = "green";
-                    iniciarEscaneo();
-                } catch (error) {
-                    elements.csvStatus.textContent = "❌ Error: Formato CSV inválido (Use: Nombre;Apellido;DNI)";
-                    elements.csvStatus.style.color = "red";
-                }
-            };
-            reader.readAsText(file);
-        }
-
-        function iniciarEscaneo() {
-            if (scanner) return;
+        // VERSIÓN MÍNIMA FUNCIONAL
+        console.log("La página se cargó correctamente");
+        
+        const registrosDiv = document.getElementById('registros');
+        if (!registrosDiv) {
+            console.error("ERROR CRÍTICO: No se encontró el div 'registros'");
+            document.body.innerHTML = '<h1 style="color:red">Error: Falta elemento crítico</h1>';
+        } else {
+            registrosDiv.innerHTML = '<p>Prueba de que el DOM funciona</p>';
             
-            scanner = new Html5Qrcode("reader");
-            scanner.start(
+            // Prueba básica del escáner
+            const html5Qrcode = new Html5Qrcode("reader");
+            html5Qrcode.start(
                 { facingMode: "environment" },
                 { fps: 10, qrbox: 250 },
                 qrCodeMessage => {
-                    if (Date.now() - (ultimoEscaneo?.tiempo || 0) < TIEMPO_ENTRE_ESCANEOS) return;
-                    
-                    procesarQR(qrCodeMessage);
-                    ultimoEscaneo = { 
-                        codigo: qrCodeMessage, 
-                        tiempo: Date.now() 
-                    };
-                    
-                    setTimeout(() => {
-                        scanner.stop().then(() => {
-                            scanner = null;
-                            if (socios.length > 0) iniciarEscaneo();
-                        });
-                    }, 1000);
+                    registrosDiv.innerHTML += `<p>Escaneado: ${qrCodeMessage}</p>`;
                 },
-                error => console.log("Error escaneo:", error)
-            ).catch(err => console.error("Error iniciar escáner:", err));
-        }
-
-        function procesarQR(qrContent) {
-            // Extracción mejorada de DNI
-            let dni = qrContent;
-            const dniMatch = qrContent.match(/(?:DNI|dni)[:=]?\s*(\d+)/i) || qrContent.match(/\b(\d{7,8})\b/);
-            if (dniMatch) dni = dniMatch[1] || dni;
-            
-            const socio = socios.find(s => s.dni === dni.trim());
-            
-            if (!socio) {
-                mostrarResultado('error', '❌ No registrado', `DNI: ${dni}`);
-                playSound('errorSound');
-                return;
-            }
-
-            const registro = {
-                dni: socio.dni,
-                nombre: socio.nombre,
-                fecha: new Date().toLocaleString(),
-                tipo: "carnet"
-            };
-            
-            registros.push(registro);
-            guardarRegistros();
-            actualizarRegistros();
-            mostrarResultado('success', '✅ Registrado', `
-                ${socio.nombre}<br>
-                DNI: ${socio.dni}
-            `);
-            playSound('successSound');
-        }
-
-        function buscarSocios() {
-            const query = elements.searchInput.value.trim().toLowerCase();
-            elements.resultsList.innerHTML = '';
-            elements.manualRegisterBtn.disabled = true;
-            
-            if (query.length < 3) {
-                elements.resultsList.style.display = 'none';
-                return;
-            }
-
-            const resultados = socios.filter(socio => 
-                socio.dni.includes(query) || 
-                socio.nombre.toLowerCase().includes(query)
-            );
-
-            if (resultados.length > 0) {
-                elements.resultsList.innerHTML = resultados.map(socio => `
-                    <div class="result-item" data-dni="${socio.dni}">
-                        <strong>${socio.nombre}</strong><br>
-                        DNI: ${socio.dni}
-                    </div>
-                `).join('');
-                
-                elements.resultsList.style.display = 'block';
-                
-                document.querySelectorAll('.result-item').forEach(item => {
-                    item.addEventListener('click', function() {
-                        const dni = this.getAttribute('data-dni');
-                        selectedSocio = socios.find(s => s.dni === dni);
-                        elements.searchInput.value = selectedSocio.nombre;
-                        elements.resultsList.style.display = 'none';
-                        elements.manualRegisterBtn.disabled = false;
-                    });
-                });
-            } else {
-                elements.resultsList.innerHTML = '<div class="result-item">No se encontraron socios</div>';
-                elements.resultsList.style.display = 'block';
-            }
-        }
-
-        function cargarEntradasWeb(event) {
-            const file = event.target.files[0];
-            if (!file) return;
-
-            const reader = new FileReader();
-            reader.onload = function(e) {
-                try {
-                    const data = new Uint8Array(e.target.result);
-                    const workbook = XLSX.read(data, { type: 'array' });
-                    const firstSheet = workbook.Sheets[workbook.SheetNames[0]];
-                    const jsonData = XLSX.utils.sheet_to_json(firstSheet);
-                    
-                    // Buscar columna DNI (case insensitive)
-                    const columnaDNI = Object.keys(jsonData[0] || {}).find(key => 
-                        key.toLowerCase().includes('dni'));
-                    
-                    if (!columnaDNI) throw new Error("No se encontró columna DNI");
-                    
-                    entradasWeb = jsonData
-                        .map(item => item[columnaDNI]?.toString().trim())
-                        .filter(Boolean);
-                    
-                    elements.webSalesStatus.textContent = `✅ Entradas cargadas: ${entradasWeb.length}`;
-                    elements.webSalesStatus.style.color = "green";
-                    elements.importWebBtn.disabled = false;
-                    
-                } catch (error) {
-                    elements.webSalesStatus.textContent = `❌ Error: ${error.message}`;
-                    elements.webSalesStatus.style.color = "red";
-                }
-            };
-            reader.readAsArrayBuffer(file);
-        }
-
-        function importarEntradasWeb() {
-            if (entradasWeb.length === 0) {
-                mostrarResultado('error', '❌ Error', 'No hay entradas para importar');
-                return;
-            }
-
-            const hoy = new Date().toLocaleDateString();
-            let nuevos = 0, duplicados = 0;
-
-            entradasWeb.forEach(dni => {
-                const existe = registros.some(r => 
-                    r.dni === dni && 
-                    new Date(r.fecha).toLocaleDateString() === hoy
-                );
-
-                if (!existe) {
-                    registros.push({
-                        dni: dni,
-                        nombre: "Entrada Web",
-                        fecha: new Date().toLocaleString(),
-                        tipo: "web"
-                    });
-                    nuevos++;
-                } else {
-                    duplicados++;
-                }
+                errorMessage => console.log("Error escaneo:", errorMessage)
+            ).catch(err => {
+                console.error("Error iniciar escáner:", err);
+                registrosDiv.innerHTML += '<p style="color:red">Error al iniciar cámara</p>';
             });
-
-            guardarRegistros();
-            actualizarRegistros();
-            mostrarResultado('success', '✅ Importado', `
-                Nuevos: ${nuevos}<br>
-                Duplicados: ${duplicados}
-            `);
-        }
-
-        function limpiarRegistros() {
-            if (confirm('¿Borrar TODOS los registros de hoy?')) {
-                const hoy = new Date().toLocaleDateString();
-                registros = registros.filter(r => 
-                    new Date(r.fecha).toLocaleDateString() !== hoy
-                );
-                guardarRegistros();
-                actualizarRegistros();
-            }
-        }
-
-        function exportarRegistros() {
-            const hoy = new Date().toLocaleDateString();
-            const registrosHoy = registros.filter(r => 
-                new Date(r.fecha).toLocaleDateString() === hoy
-            );
-
-            let csv = "Fecha,Nombre,DNI,Tipo\n";
-            registrosHoy.forEach(r => {
-                csv += `"${r.fecha}","${r.nombre}","${r.dni}","${r.tipo}"\n`;
-            });
-
-            const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
-            const url = URL.createObjectURL(blob);
-            const link = document.createElement('a');
-            link.href = url;
-            link.download = `registros_${hoy.replace(/\//g, '-')}.csv`;
-            link.click();
-        }
-
-        // FUNCIONES AUXILIARES
-        function guardarRegistros() {
-            try {
-                localStorage.setItem('registros', JSON.stringify(registros));
-            } catch (e) {
-                console.error("Error al guardar:", e);
-                localStorage.setItem('registros', JSON.stringify(registros.slice(-100))); // Guarda solo últimos 100
-            }
-        }
-
-        function actualizarRegistros() {
-            const hoy = new Date().toLocaleDateString();
-            const registrosHoy = registros.filter(r => 
-                new Date(r.fecha).toLocaleDateString() === hoy
-            );
-
-            elements.registrosList.innerHTML = registrosHoy.length > 0
-                ? registrosHoy.map(r => `
-                    <div class="registro-item">
-                        <strong>${r.fecha}</strong><br>
-                        ${r.nombre} (DNI: ${r.dni})<br>
-                        <small>Tipo: ${r.tipo === 'web' ? 'Entrada Web' : r.tipo === 'manual' ? 'Manual' : 'Carnet'}</small>
-                    </div>
-                `).join('')
-                : '<p>No hay registros hoy.</p>';
-        }
-
-        function mostrarResultado(tipo, icono, mensaje) {
-            const result = document.getElementById('result');
-            result.innerHTML = `
-                <div class="icon">${icono}</div>
-                <div>${mensaje}</div>
-            `;
-            result.className = tipo;
-            result.style.display = 'block';
-            setTimeout(() => result.style.display = 'none', 3000);
-        }
-
-        function playSound(id) {
-            const sound = document.getElementById(id);
-            if (sound) {
-                sound.currentTime = 0;
-                sound.play().catch(e => console.log("Error sonido:", e));
-            }
         }
     </script>
 </body>
