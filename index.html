@@ -42,13 +42,6 @@
             font-weight: bold;
             min-height: 20px;
         }
-        #registros {
-            margin-top: 20px;
-            text-align: left;
-            max-width: 500px;
-            margin-left: auto;
-            margin-right: auto;
-        }
     </style>
 </head>
 <body>
@@ -59,38 +52,42 @@
         <div id="status">Presiona "Iniciar Escáner" para comenzar</div>
         <button id="scannerBtn">Iniciar Escáner</button>
     </div>
-    
-    <div id="registros"></div>
 
-    <!-- Usamos CDN oficial de html5-qrcode -->
-    <script src="https://unpkg.com/html5-qrcode@2.3.8/dist/html5-qrcode.min.js"></script>
+    <!-- Cargamos la librería de DOS formas diferentes como respaldo -->
+    <!-- Intento 1: CDN principal -->
+    <script src="https://cdn.jsdelivr.net/npm/html5-qrcode@2.3.8/dist/html5-qrcode.min.js"></script>
+    
+    <!-- Intento 2: CDN alternativo en caso de fallo -->
+    <script>
+        if (typeof Html5Qrcode === 'undefined') {
+            document.write('<script src="https://unpkg.com/html5-qrcode@2.3.4/dist/html5-qrcode.min.js"><\/script>');
+        }
+    </script>
     
     <script>
         // =============================================
-        // VERIFICACIÓN INICIAL DEL DOM
+        // VERIFICACIÓN DE LA LIBRERÍA
         // =============================================
-        console.log("Iniciando aplicación...");
+        console.log("Verificando librería QR...");
         
-        const scannerBtn = document.getElementById('scannerBtn');
-        const readerDiv = document.getElementById('reader');
-        const statusDiv = document.getElementById('status');
-        const registrosDiv = document.getElementById('registros');
-        
-        // Verificar elementos críticos
-        if (!scannerBtn || !readerDiv || !statusDiv || !registrosDiv) {
-            const errorMsg = "Error: Elementos HTML faltantes. Revisa los IDs en el código.";
+        if (typeof Html5Qrcode === 'undefined') {
+            const errorMsg = "ERROR CRÍTICO: No se cargó la librería QR. Bloqueador de contenido?";
             console.error(errorMsg);
-            document.body.innerHTML = `<h1 style="color:red">${errorMsg}</h1>`;
+            document.getElementById('status').textContent = errorMsg;
+            document.getElementById('status').style.color = "red";
             throw new Error(errorMsg);
         } else {
-            console.log("Todos los elementos HTML encontrados correctamente");
+            console.log("Librería QR cargada correctamente:", Html5Qrcode);
         }
 
         // =============================================
-        // CONFIGURACIÓN DEL ESCÁNER
+        // CONFIGURACIÓN DEL ESCÁNER (SOLO SI LA LIBRERÍA EXISTE)
         // =============================================
+        const scannerBtn = document.getElementById('scannerBtn');
+        const readerDiv = document.getElementById('reader');
+        const statusDiv = document.getElementById('status');
         let scanner = null;
-        
+
         scannerBtn.addEventListener('click', async () => {
             try {
                 if (scanner) {
@@ -99,12 +96,13 @@
                     await startScanner();
                 }
             } catch (error) {
-                handleError(error);
+                statusDiv.textContent = `Error: ${error.message}`;
+                statusDiv.style.color = "red";
+                console.error("Error en el botón:", error);
             }
         });
 
         async function startScanner() {
-            console.log("Intentando iniciar escáner...");
             statusDiv.textContent = "Iniciando cámara...";
             scannerBtn.disabled = true;
             
@@ -112,24 +110,24 @@
                 scanner = new Html5Qrcode("reader");
                 
                 await scanner.start(
+                    { facingMode: "environment" }, 
                     { 
-                        facingMode: "environment" 
-                    }, 
-                    {
                         fps: 10,
                         qrbox: { width: 250, height: 250 }
                     },
                     qrCodeMessage => {
-                        handleScanSuccess(qrCodeMessage);
+                        statusDiv.textContent = `Escaneado: ${qrCodeMessage}`;
+                        statusDiv.style.color = "green";
+                        console.log("Código escaneado:", qrCodeMessage);
                     },
-                    qrCodeError => {
-                        console.log("Error durante escaneo:", qrCodeError);
+                    error => {
+                        console.log("Error durante escaneo:", error);
                     }
                 );
                 
                 scannerBtn.textContent = "Detener Escáner";
                 statusDiv.textContent = "Escáner listo - Apunta a un código QR";
-                console.log("Escáner iniciado correctamente");
+                statusDiv.style.color = "black";
                 
             } catch (error) {
                 await handleCameraError(error);
@@ -139,7 +137,6 @@
         }
 
         async function stopScanner() {
-            console.log("Deteniendo escáner...");
             statusDiv.textContent = "Deteniendo cámara...";
             scannerBtn.disabled = true;
             
@@ -149,29 +146,14 @@
                 readerDiv.innerHTML = "Área del escáner";
                 scannerBtn.textContent = "Iniciar Escáner";
                 statusDiv.textContent = "Escáner detenido";
-                console.log("Escáner detenido correctamente");
+                statusDiv.style.color = "black";
                 
             } catch (error) {
-                handleError(error);
-                statusDiv.textContent = "Error al detener escáner";
+                statusDiv.textContent = `Error al detener: ${error.message}`;
+                statusDiv.style.color = "red";
             } finally {
                 scannerBtn.disabled = false;
             }
-        }
-
-        function handleScanSuccess(qrCodeMessage) {
-            console.log("Código escaneado:", qrCodeMessage);
-            registrosDiv.innerHTML += `<div class="registro">
-                <strong>${new Date().toLocaleString()}</strong><br>
-                ${qrCodeMessage}
-            </div>`;
-            statusDiv.textContent = "¡Código escaneado correctamente!";
-            
-            // Feedback visual
-            readerDiv.style.border = "2px solid green";
-            setTimeout(() => {
-                readerDiv.style.border = "2px dashed #ccc";
-            }, 500);
         }
 
         async function handleCameraError(error) {
@@ -179,20 +161,18 @@
             
             if (error.message.includes("NotAllowedError")) {
                 statusDiv.textContent = "ERROR: Permiso de cámara denegado. Por favor habilita los permisos.";
-                statusDiv.style.color = "red";
             } else if (error.message.includes("NotFoundError")) {
-                statusDiv.textContent = "ERROR: No se encontró cámara. Conecta una cámara e intenta nuevamente.";
-                statusDiv.style.color = "red";
+                statusDiv.textContent = "ERROR: No se encontró cámara. Conecta una cámara.";
             } else {
                 statusDiv.textContent = `ERROR: ${error.message}`;
-                statusDiv.style.color = "red";
             }
+            statusDiv.style.color = "red";
             
             if (scanner) {
                 try {
                     await scanner.stop();
-                } catch (stopError) {
-                    console.error("Error al detener escáner:", stopError);
+                } catch (e) {
+                    console.error("Error al limpiar escáner:", e);
                 }
                 scanner = null;
             }
@@ -200,13 +180,7 @@
             scannerBtn.textContent = "Iniciar Escáner";
         }
 
-        function handleError(error) {
-            console.error("Error general:", error);
-            statusDiv.textContent = `ERROR: ${error.message}`;
-            statusDiv.style.color = "red";
-        }
-
-        console.log("Aplicación inicializada correctamente");
+        console.log("Aplicación lista. Versión QR:", Html5Qrcode.VERSION);
         statusDiv.textContent = "Presiona 'Iniciar Escáner' para comenzar";
     </script>
 </body>
