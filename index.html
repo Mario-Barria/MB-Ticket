@@ -264,10 +264,10 @@
 <body>
   <div class="container">
     <header>
-      <img src="Logo MB-ticket.png" alt="Logo" class="logo">
-      <h1>Control de Acceso - Estadio</h1>
-    </header>
-
+  <img src="Logo MB-ticket.png" alt="Logo" class="logo">
+  <button id="activarSonidos" style="background: var(--success); margin-bottom: 10px; padding: 10px 15px; border-radius: 5px; color: white; border: none; cursor: pointer;">Activar Sonidos</button>
+  <h1>Control de Acceso - Estadio</h1>
+</header>
     <div class="tabs">
       <div class="tab active" data-tab="ingreso">Registro de Ingresos</div>
       <div class="tab" data-tab="importar">Importar Entradas Web</div>
@@ -725,11 +725,19 @@ function procesarQR(qrContent) {
   result.className = tipo;
   result.style.display = 'block';
   
-  // Reproducir sonido según el tipo
-  if (tipo === 'success') {
-    document.getElementById('successSound').play().catch(e => console.log("Error sonido:", e));
-  } else if (tipo === 'error') {
-    document.getElementById('errorSound').play().catch(e => console.log("Error sonido:", e));
+  // Reproducir sonido
+  try {
+    if (tipo === 'success' && window.sonidosActivados) {
+      const sound = document.getElementById('successSound');
+      sound.currentTime = 0; // Reiniciar si ya está sonando
+      sound.play();
+    } else if (tipo === 'error' && window.sonidosActivados) {
+      const sound = document.getElementById('errorSound');
+      sound.currentTime = 0;
+      sound.play();
+    }
+  } catch (e) {
+    console.log("Error con sonido:", e);
   }
   
   setTimeout(() => {
@@ -770,14 +778,27 @@ document.addEventListener('DOMContentLoaded', () => {
 window.addEventListener('beforeunload', () => {
   localStorage.setItem('registros', JSON.stringify(registros));
 });
-// Solución para actualización de lista en PWA
+// ===== [INICIO] CÓDIGO NUEVO ===== //
+// Activar sonidos (requerido en móviles)
+document.getElementById('activarSonidos')?.addEventListener('click', () => {
+  document.getElementById('successSound').play()
+    .then(() => {
+      window.sonidosActivados = true;
+      const boton = document.getElementById('activarSonidos');
+      if (boton) boton.style.display = 'none';
+    })
+    .catch(e => {
+      console.error("Error activando sonidos:", e);
+    });
+});
+
+// Solución definitiva para actualización de lista
 function actualizarRegistros() {
   const hoy = new Date().toLocaleDateString();
   const registrosHoy = registros.filter(r => 
     new Date(r.fecha).toLocaleDateString() === hoy
   );
 
-  // Limpiar y reconstruir la lista completamente
   registrosList.innerHTML = registrosHoy.length > 0
     ? registrosHoy.map(r => `
         <div class="registro-item">
@@ -787,17 +808,21 @@ function actualizarRegistros() {
         </div>
       `).join('')
     : '<p>No hay registros aún.</p>';
-  
-  // Forzar redibujado en móviles
-  registrosList.style.display = 'none';
-  registrosList.offsetHeight; // Truco para reiniciar renderizado
-  registrosList.style.display = 'block';
 }
 
-// Actualizar lista cada segundo (solo para PWA)
+// Actualización automática para móviles
 if (/Android|iPhone|iPad/i.test(navigator.userAgent)) {
-  setInterval(actualizarRegistros, 1000);
+  setInterval(actualizarRegistros, 500);
+  
+  // Guardar registros automáticamente
+  const originalPush = Array.prototype.push;
+  Array.prototype.push = function() {
+    const result = originalPush.apply(this, arguments);
+    localStorage.setItem('registros', JSON.stringify(registros));
+    actualizarRegistros();
+    return result;
+  };
 }
-  </script>
+// ===== [FIN] CÓDIGO NUEVO ===== //  </script>
 </body>
 </html>
