@@ -666,21 +666,31 @@ function procesarQR(qrContent) {
 
     // Actualizar registros
     function actualizarRegistros() {
-      const hoy = new Date().toLocaleDateString();
-      const registrosHoy = registros.filter(r => 
-        new Date(r.fecha).toLocaleDateString() === hoy
-      );
+  const hoy = new Date().toLocaleDateString();
+  const registrosHoy = registros.filter(r => 
+    new Date(r.fecha).toLocaleDateString() === hoy
+  );
 
-      registrosList.innerHTML = registrosHoy.length > 0
-        ? registrosHoy.map(r => `
-            <div class="registro-item">
-              <strong>${r.fecha}</strong><br>
-              ${r.nombre} (DNI: ${r.dni})<br>
-              <small>Tipo: ${r.tipo === 'web' ? 'Entrada Web' : r.tipo === 'manual' ? 'Registro Manual' : 'Carnet'}</small>
-            </div>
-          `).join('')
-        : '<p>No hay registros aún.</p>';
-    }
+  // Método a prueba de errores para móviles
+  registrosList.innerHTML = ''; // Limpiar primero
+  
+  if (registrosHoy.length === 0) {
+    registrosList.innerHTML = '<p>No hay registros aún.</p>';
+    return;
+  }
+
+  // Crear nodos manualmente (más confiable en PWA)
+  registrosHoy.forEach(r => {
+    const div = document.createElement('div');
+    div.className = 'registro-item';
+    div.innerHTML = `
+      <strong>${r.fecha}</strong><br>
+      ${r.nombre} (DNI: ${r.dni})<br>
+      <small>Tipo: ${r.tipo === 'web' ? 'Entrada Web' : r.tipo === 'manual' ? 'Registro Manual' : 'Carnet'}</small>
+    `;
+    registrosList.appendChild(div);
+  });
+}
 
     // Exportar registros
     function exportarRegistros() {
@@ -747,66 +757,25 @@ function procesarQR(qrContent) {
              fechaRegistro.getMonth() === hoy.getMonth() && 
              fechaRegistro.getFullYear() === hoy.getFullYear();
     }
-// ===== SOLUCIÓN PARA PROBLEMAS DE PWA =====
-// 1. Forzar la actualización de registros al cargar
-document.addEventListener('DOMContentLoaded', () => {
-  actualizarRegistros();
-  
-  // 2. Solucionar doble registro manual
-  const originalRegister = registrarManual;
-  registrarManual = function() {
-    const hoy = new Date().toLocaleDateString();
-    if (selectedSocio && registros.some(r => 
-      r.dni === selectedSocio.dni && 
-      new Date(r.fecha).toLocaleDateString() === hoy
-    )) {
-      mostrarResultado('error', '❌ Ya ingresó hoy', selectedSocio.nombre);
-      document.getElementById('errorSound').play();
-      return;
-    }
-    originalRegister.apply(this, arguments);
-  };
-});
-
-// 3. Asegurar que localStorage se sincronice
-window.addEventListener('beforeunload', () => {
+// ===== SOLUCIÓN DEFINITIVA PARA MÓVIL ===== //
+// 1. Sincronización automática
+const originalPush = Array.prototype.push;
+Array.prototype.push = function() {
+  const result = originalPush.apply(this, arguments);
   localStorage.setItem('registros', JSON.stringify(registros));
-});
-// Fix definitivo para actualización de lista
-function actualizarRegistros() {
-  const hoy = new Date().toLocaleDateString();
-  const registrosHoy = registros.filter(r => 
-    new Date(r.fecha).toLocaleDateString() === hoy
-  );
+  actualizarRegistros(); // Actualizar UI inmediatamente
+  return result;
+};
 
-  // Limpieza completa y reconstrucción
-  registrosList.innerHTML = '';
-  registrosHoy.forEach(r => {
-    const item = document.createElement('div');
-    item.className = 'registro-item';
-    item.innerHTML = `
-      <strong>${r.fecha}</strong><br>
-      ${r.nombre} (DNI: ${r.dni})<br>
-      <small>Tipo: ${r.tipo === 'web' ? 'Entrada Web' : r.tipo === 'manual' ? 'Registro Manual' : 'Carnet'}</small>
-    `;
-    registrosList.appendChild(item);
-  });
-
-  if (registrosHoy.length === 0) {
-    registrosList.innerHTML = '<p>No hay registros aún.</p>';
-  }
-}
-
-// Actualización forzada en móviles
+// 2. Actualización periódica (solo para móviles)
 if (/Android|iPhone|iPad/i.test(navigator.userAgent)) {
-  // Actualizar cada vez que se modifica el array
-  const originalPush = registros.push;
-  registros.push = function() {
-    const result = originalPush.apply(this, arguments);
-    localStorage.setItem('registros', JSON.stringify(registros));
-    actualizarRegistros();
-    return result;
-  };
+  // Actualizar cada 1 segundo
+  setInterval(actualizarRegistros, 1000);
+  
+  // Actualizar al volver a la app
+  document.addEventListener('visibilitychange', () => {
+    if (!document.hidden) actualizarRegistros();
+  });
 }
 
 
