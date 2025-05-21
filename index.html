@@ -370,43 +370,53 @@
 
     // Cargar socios desde CSV (versión original que funcionaba)
     function cargarSociosCSV(event) {
-        const file = event.target.files[0];
-        if (!file) return;
+    const file = event.target.files[0];
+    if (!file) return;
 
-        const reader = new FileReader();
-        reader.onload = function(e) {
-            try {
-                const content = e.target.result;
-                const lines = content.split(/\r?\n/).filter(line => line.trim() !== '');
+    const reader = new FileReader();
+    reader.onload = function(e) {
+        try {
+            const content = e.target.result;
+            const lines = content.split(/\r?\n/).filter(line => line.trim() !== '');
+            
+            // Versión más flexible del parser
+            socios = lines.map(line => {
+                // Eliminar comillas si existen
+                line = line.replace(/"/g, '');
                 
-                socios = lines.map(line => {
-                    const [nombre, apellido, dni] = line.split(';');
-                    return {
-                        nombre: `${nombre.trim()} ${apellido.trim()}`,
-                        dni: dni.trim()
-                    };
-                });
+                // Dividir por coma o punto y coma
+                const parts = line.split(/[,;]/).map(part => part.trim());
+                
+                // Validar que tenga al menos 3 partes (nombre, apellido, dni)
+                if (parts.length < 3) {
+                    throw new Error("Formato incorrecto");
+                }
+                
+                return {
+                    nombre: `${parts[0]} ${parts[1]}`,
+                    dni: parts[2]
+                };
+            });
 
-                csvStatus.textContent = `✅ Socios cargados: ${socios.length}`;
-                csvStatus.style.color = "green";
-                exportBtn.disabled = false;
-                iniciarEscaneo();
+            csvStatus.textContent = `✅ Socios cargados: ${socios.length}`;
+            csvStatus.style.color = "green";
+            exportBtn.disabled = false;
+            iniciarEscaneo();
 
-            } catch (error) {
-                csvStatus.textContent = "❌ Error: El archivo debe tener formato: Nombre;Apellido;DNI";
-                csvStatus.style.color = "red";
-                console.error("Error al procesar CSV:", error);
-            }
-        };
-        
-        reader.onerror = () => {
-            csvStatus.textContent = "❌ Error al leer el archivo";
+        } catch (error) {
+            csvStatus.textContent = "❌ Error: El archivo debe tener 3 columnas (Nombre, Apellido, DNI) separadas por coma o punto y coma";
             csvStatus.style.color = "red";
-        };
-        
-        reader.readAsText(file);
-    }
-
+            console.error("Error al procesar CSV:", error);
+        }
+    };
+    
+    reader.onerror = () => {
+        csvStatus.textContent = "❌ Error al leer el archivo";
+        csvStatus.style.color = "red";
+    };
+    
+    reader.readAsText(file);
+}
     // Procesar QR (con el guardado mejorado)
     function procesarQR(qrContent) {
         const ahora = Date.now();
