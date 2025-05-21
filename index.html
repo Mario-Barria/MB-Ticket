@@ -717,18 +717,25 @@ function procesarQR(qrContent) {
 
     // Mostrar resultado
     function mostrarResultado(tipo, icono, mensaje) {
-      const result = document.getElementById('result');
-      result.innerHTML = `
-        <div class="icon">${icono}</div>
-        <div>${mensaje}</div>
-      `;
-      result.className = tipo;
-      result.style.display = 'block';
-      
-      setTimeout(() => {
-        result.style.display = 'none';
-      }, 3000);
-    }
+  const result = document.getElementById('result');
+  result.innerHTML = `
+    <div class="icon">${icono}</div>
+    <div>${mensaje}</div>
+  `;
+  result.className = tipo;
+  result.style.display = 'block';
+  
+  // Reproducir sonido según el tipo
+  if (tipo === 'success') {
+    document.getElementById('successSound').play().catch(e => console.log("Error sonido:", e));
+  } else if (tipo === 'error') {
+    document.getElementById('errorSound').play().catch(e => console.log("Error sonido:", e));
+  }
+  
+  setTimeout(() => {
+    result.style.display = 'none';
+  }, 3000);
+}
 
     // Verificar si es hoy
     function esHoy(fechaStr) {
@@ -763,6 +770,34 @@ document.addEventListener('DOMContentLoaded', () => {
 window.addEventListener('beforeunload', () => {
   localStorage.setItem('registros', JSON.stringify(registros));
 });
+// Solución para actualización de lista en PWA
+function actualizarRegistros() {
+  const hoy = new Date().toLocaleDateString();
+  const registrosHoy = registros.filter(r => 
+    new Date(r.fecha).toLocaleDateString() === hoy
+  );
+
+  // Limpiar y reconstruir la lista completamente
+  registrosList.innerHTML = registrosHoy.length > 0
+    ? registrosHoy.map(r => `
+        <div class="registro-item">
+          <strong>${r.fecha}</strong><br>
+          ${r.nombre} (DNI: ${r.dni})<br>
+          <small>Tipo: ${r.tipo === 'web' ? 'Entrada Web' : r.tipo === 'manual' ? 'Registro Manual' : 'Carnet'}</small>
+        </div>
+      `).join('')
+    : '<p>No hay registros aún.</p>';
+  
+  // Forzar redibujado en móviles
+  registrosList.style.display = 'none';
+  registrosList.offsetHeight; // Truco para reiniciar renderizado
+  registrosList.style.display = 'block';
+}
+
+// Actualizar lista cada segundo (solo para PWA)
+if (/Android|iPhone|iPad/i.test(navigator.userAgent)) {
+  setInterval(actualizarRegistros, 1000);
+}
   </script>
 </body>
 </html>
