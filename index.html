@@ -666,32 +666,36 @@ function procesarQR(qrContent) {
 
     // Actualizar registros
     function actualizarRegistros() {
+  // Método ultra-compatible para móviles
   const hoy = new Date().toLocaleDateString();
+  const registrosGuardados = localStorage.getItem('registros');
+  const registros = registrosGuardados ? JSON.parse(registrosGuardados) : [];
+  
   const registrosHoy = registros.filter(r => 
     new Date(r.fecha).toLocaleDateString() === hoy
   );
 
-  // Método a prueba de errores para móviles
-  registrosList.innerHTML = ''; // Limpiar primero
+  // Limpiar y reconstruir manualmente
+  const lista = document.getElementById('registros-list');
+  lista.innerHTML = ''; // Limpiar primero
   
   if (registrosHoy.length === 0) {
-    registrosList.innerHTML = '<p>No hay registros aún.</p>';
+    lista.innerHTML = '<p>No hay registros aún.</p>';
     return;
   }
 
-  // Crear nodos manualmente (más confiable en PWA)
+  // Crear elementos DOM manualmente
   registrosHoy.forEach(r => {
-    const div = document.createElement('div');
-    div.className = 'registro-item';
-    div.innerHTML = `
+    const item = document.createElement('div');
+    item.className = 'registro-item';
+    item.innerHTML = `
       <strong>${r.fecha}</strong><br>
       ${r.nombre} (DNI: ${r.dni})<br>
       <small>Tipo: ${r.tipo === 'web' ? 'Entrada Web' : r.tipo === 'manual' ? 'Registro Manual' : 'Carnet'}</small>
     `;
-    registrosList.appendChild(div);
+    lista.appendChild(item);
   });
 }
-
     // Exportar registros
     function exportarRegistros() {
       const hoy = new Date().toLocaleDateString();
@@ -757,26 +761,26 @@ function procesarQR(qrContent) {
              fechaRegistro.getMonth() === hoy.getMonth() && 
              fechaRegistro.getFullYear() === hoy.getFullYear();
     }
-// ===== SOLUCIÓN DEFINITIVA PARA MÓVIL ===== //
-// 1. Sincronización automática
-const originalPush = Array.prototype.push;
-Array.prototype.push = function() {
-  const result = originalPush.apply(this, arguments);
-  localStorage.setItem('registros', JSON.stringify(registros));
-  actualizarRegistros(); // Actualizar UI inmediatamente
-  return result;
-};
-
-// 2. Actualización periódica (solo para móviles)
+/ ===== SISTEMA DE ACTUALIZACIÓN PARA MÓVILES ===== //
+// 1. Actualizar cada 2 segundos (solo en móvil)
 if (/Android|iPhone|iPad/i.test(navigator.userAgent)) {
-  // Actualizar cada 1 segundo
-  setInterval(actualizarRegistros, 1000);
+  setInterval(actualizarRegistros, 2000);
   
-  // Actualizar al volver a la app
-  document.addEventListener('visibilitychange', () => {
-    if (!document.hidden) actualizarRegistros();
-  });
+  // 2. Actualizar al hacer clic en cualquier parte
+  document.addEventListener('click', actualizarRegistros);
+  
+  // 3. Guardar automáticamente
+  const originalPush = Array.prototype.push;
+  Array.prototype.push = function() {
+    const result = originalPush.apply(this, arguments);
+    localStorage.setItem('registros', JSON.stringify(registros));
+    setTimeout(actualizarRegistros, 500); // Actualizar con retraso
+    return result;
+  };
 }
+
+// Actualizar al cargar
+document.addEventListener('DOMContentLoaded', actualizarRegistros);
 
 
   </script>
