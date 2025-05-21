@@ -546,73 +546,79 @@
     }
 
     // Iniciar escáner
-    function iniciarEscaneo() {
-      if (scanner) return;
-
-      scanner = new Html5Qrcode("reader");
-      scanner.start(
-        { facingMode: "environment" },
-        { fps: 10, qrbox: 250 },
-        (decodedText) => {
-          procesarQR(decodedText);
-        },
-        (error) => {
-          console.log("Error:", error);
-        }
-      ).catch(err => {
-        console.error("Error al iniciar:", err);
-      });
+    // REEMPLAZAR FUNCIÓN iniciarEscaneo()
+function iniciarEscaneo() {
+  if (window.scanner && window.scanner.isScanning) return;
+  
+  window.scanner = new Html5Qrcode("reader");
+  window.scanner.start(
+    { facingMode: "environment" },
+    { fps: 10, qrbox: 250 },
+    (decodedText) => {
+      procesarQR(decodedText);
+    },
+    (error) => {
+      // Ignorar errores comunes (sin detener escáner)
+      if (error !== "NotFoundException") {
+        console.log("Error escáner:", error);
+      }
     }
+  ).then(() => {
+    console.log("Escáner activo");
+  }).catch(err => {
+    console.error("Error al iniciar:", err);
+  });
+}
 
     // Procesar QR
-    function procesarQR(qrContent) {
-      // Evitar procesar el mismo código consecutivamente
-      if (ultimoEscaneo === qrContent) return;
-      ultimoEscaneo = qrContent;
+    // REEMPLAZAR FUNCIÓN procesarQR()
+function procesarQR(qrContent) {
+  // Usar temporizador para permitir re-escaneo después de 1.5 segundos
+  const ahora = Date.now();
+  if (window.ultimoEscaneo && (ahora - window.ultimoEscaneo < 1500)) return;
+  window.ultimoEscaneo = ahora;
 
-      const dni = qrContent.split('=')[1] || qrContent;
-      const socio = socios.find(s => s.dni === dni);
-      
-      if (!socio) {
-        mostrarResultado('error', '❌ No registrado', `DNI: ${dni}`);
-        document.getElementById('errorSound').play();
-        return;
-      }
+  const dni = qrContent.split('=')[1] || qrContent;
+  const socio = socios.find(s => s.dni === dni.trim());
+  
+  if (!socio) {
+    mostrarResultado('error', '❌ No registrado', `DNI: ${dni}`);
+    document.getElementById('errorSound').play();
+    return;
+  }
 
-      // Verificar si ya ingresó hoy
-      const hoy = new Date().toLocaleDateString();
-      const registroExistente = registros.find(r => 
-        r.dni === dni && 
-        new Date(r.fecha).toLocaleDateString() === hoy
-      );
+  const hoy = new Date().toLocaleDateString();
+  const yaRegistrado = registros.some(r => 
+    r.dni === socio.dni && 
+    new Date(r.fecha).toLocaleDateString() === hoy
+  );
 
-      if (registroExistente) {
-        mostrarResultado('error', '❌ Ya ingresó hoy', `
-          ${socio.nombre}<br>
-          DNI: ${dni}<br>
-          Hora: ${registroExistente.fecha.split(',')[1].trim()}
-        `);
-        document.getElementById('errorSound').play();
-        return;
-      }
+  if (yaRegistrado) {
+    mostrarResultado('error', '❌ Ya ingresó hoy', `
+      ${socio.nombre}<br>
+      DNI: ${socio.dni}
+    `);
+    document.getElementById('errorSound').play();
+    return;
+  }
 
-      const registro = {
-        dni: dni,
-        nombre: socio.nombre,
-        fecha: new Date().toLocaleString(),
-        tipo: "carnet"
-      };
-      
-      registros.push(registro);
-      localStorage.setItem('registros', JSON.stringify(registros));
-      actualizarRegistros();
-      
-      mostrarResultado('success', '✅ Registrado', `
-        ${socio.nombre}<br>
-        DNI: ${dni}
-      `);
-      document.getElementById('successSound').play();
-    }
+  // Registrar el ingreso
+  registros.push({
+    dni: socio.dni,
+    nombre: socio.nombre,
+    fecha: new Date().toLocaleString(),
+    tipo: "carnet"
+  });
+  
+  localStorage.setItem('registros', JSON.stringify(registros));
+  actualizarRegistros();
+  
+  mostrarResultado('success', '✅ Registrado', `
+    ${socio.nombre}<br>
+    DNI: ${socio.dni}
+  `);
+  document.getElementById('successSound').play();
+}
 
     // Registrar manualmente
     function registrarManual() {
@@ -732,6 +738,31 @@
              fechaRegistro.getMonth() === hoy.getMonth() && 
              fechaRegistro.getFullYear() === hoy.getFullYear();
     }
+// ===== SOLUCIÓN PARA PROBLEMAS DE PWA =====
+// 1. Forzar la actualización de registros al cargar
+document.addEventListener('DOMContentLoaded', () => {
+  actualizarRegistros();
+  
+  // 2. Solucionar doble registro manual
+  const originalRegister = registrarManual;
+  registrarManual = function() {
+    const hoy = new Date().toLocaleDateString();
+    if (selectedSocio && registros.some(r => 
+      r.dni === selectedSocio.dni && 
+      new Date(r.fecha).toLocaleDateString() === hoy
+    )) {
+      mostrarResultado('error', '❌ Ya ingresó hoy', selectedSocio.nombre);
+      document.getElementById('errorSound').play();
+      return;
+    }
+    originalRegister.apply(this, arguments);
+  };
+});
+
+// 3. Asegurar que localStorage se sincronice
+window.addEventListener('beforeunload', () => {
+  localStorage.setItem('registros', JSON.stringify(registros));
+});
   </script>
 </body>
 </html>
