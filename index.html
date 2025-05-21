@@ -265,10 +265,12 @@
   <div class="container">
     <header>
   <img src="Logo MB-ticket.png" alt="Logo" class="logo">
-  <button id="activarSonidos" style="background: #27ae60; color: white; padding: 10px; border: none; border-radius: 5px; margin-bottom: 10px; cursor: pointer;">
-    Activar Sonidos
-  </button>
-  <p id="sonidoStatus" style="color: red; font-size: 12px; display: none;">Sonidos desactivados (haz clic en el botón)</p>
+  <div id="soundControls" style="margin: 10px 0;">
+    <button id="activarSonidos" style="background: #27ae60; color: white; padding: 10px; border: none; border-radius: 5px; cursor: pointer;">
+      Activar Sonidos (Click Aquí)
+    </button>
+    <span id="soundStatus" style="color:red; margin-left:10px; font-size:12px;"></span>
+  </div>
   <h1>Control de Acceso - Estadio</h1>
 </header>
     <div class="tabs">
@@ -729,21 +731,20 @@ function procesarQR(qrContent) {
   result.style.display = 'block';
 
   // Sonidos
-  if (tipo === 'success' && window.sonidosActivados) {
-    const sound = document.getElementById('successSound');
-    sound.currentTime = 0;
-    sound.play().catch(e => console.log("Error al reproducir sonido:", e));
-  } else if (tipo === 'error' && window.sonidosActivados) {
-    const sound = document.getElementById('errorSound');
-    sound.currentTime = 0;
-    sound.play().catch(e => console.log("Error al reproducir sonido:", e));
+  if (window.sonidosActivados) {
+    try {
+      const sound = tipo === 'success' ? 
+        document.getElementById('successSound') : 
+        document.getElementById('errorSound');
+      sound.currentTime = 0;
+      sound.play().catch(e => console.error("Error sonido:", e));
+    } catch (e) {
+      console.error("Error con sonidos:", e);
+    }
   }
 
-  setTimeout(() => {
-    result.style.display = 'none';
-  }, 3000);
+  setTimeout(() => result.style.display = 'none', 3000);
 }
-
     // Verificar si es hoy
     function esHoy(fechaStr) {
       const fechaRegistro = new Date(fechaStr);
@@ -777,27 +778,31 @@ document.addEventListener('DOMContentLoaded', () => {
 window.addEventListener('beforeunload', () => {
   localStorage.setItem('registros', JSON.stringify(registros));
 });
-// ===== [INICIO] CÓDIGO NUEVO ===== //
-document.getElementById('activarSonidos')?.addEventListener('click', () => {
-  const sound = document.getElementById('successSound');
-  sound.play()
+/ ===== [INICIO] SOLUCIÓN DEFINITIVA ===== //
+// 1. Sistema de sonidos
+document.getElementById('activarSonidos').addEventListener('click', function() {
+  const testSound = new Audio("https://assets.mixkit.co/sfx/preview/mixkit-correct-answer-tone-2870.mp3");
+  testSound.play()
     .then(() => {
       window.sonidosActivados = true;
-      document.getElementById('activarSonidos').style.display = 'none';
-      document.getElementById('sonidoStatus').style.display = 'none';
+      this.style.display = 'none';
+      document.getElementById('soundStatus').textContent = 'Sonidos activados ✓';
+      document.getElementById('soundStatus').style.color = 'green';
     })
     .catch(e => {
-      document.getElementById('sonidoStatus').style.display = 'block';
-      console.error("Error al activar sonidos:", e);
+      document.getElementById('soundStatus').textContent = 'Error: El navegador bloqueó los sonidos. Prueba en Chrome o Firefox.';
+      console.error("Error activando sonidos:", e);
     });
 });
 
-// Forzar actualización de lista en móviles
-function actualizarRegistros() {
+// 2. Solución para móviles
+function hardRefreshRegistros() {
   const hoy = new Date().toLocaleDateString();
-  const registrosHoy = registros.filter(r => new Date(r.fecha).toLocaleDateString() === hoy);
+  const registrosHoy = registros.filter(r => 
+    new Date(r.fecha).toLocaleDateString() === hoy
+  );
   
-  registrosList.innerHTML = registrosHoy.length > 0
+  registrosList.innerHTML = registrosHoy.length > 0 
     ? registrosHoy.map(r => `
         <div class="registro-item">
           <strong>${r.fecha}</strong><br>
@@ -808,11 +813,23 @@ function actualizarRegistros() {
     : '<p>No hay registros aún.</p>';
 }
 
-// Actualizar cada 500ms en móviles
+// Actualización forzada en móviles
 if (/Android|iPhone|iPad/i.test(navigator.userAgent)) {
-  setInterval(actualizarRegistros, 500);
+  setInterval(hardRefreshRegistros, 800);
+  document.addEventListener('DOMContentLoaded', hardRefreshRegistros);
+  window.addEventListener('focus', hardRefreshRegistros);
 }
-// ===== [FIN] CÓDIGO NUEVO ===== //
+
+// Guardado automático
+const originalPush = Array.prototype.push;
+Array.prototype.push = function() {
+  const result = originalPush.apply(this, arguments);
+  localStorage.setItem('registros', JSON.stringify(registros));
+  hardRefreshRegistros();
+  return result;
+};
+// ===== [FIN] SOLUCIÓN DEFINITIVA ===== //
+
   </script>
 </body>
 </html>
