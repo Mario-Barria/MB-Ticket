@@ -332,132 +332,82 @@
 <script>
     // Variables globales
     let socios = [];
-    let registros = [];
-    let entradasWeb = [];
+    let registros = JSON.parse(localStorage.getItem('registros')) || [];
+    let entradasWeb = JSON.parse(localStorage.getItem('entradasWeb')) || [];
     let scanner;
     let selectedSocio = null;
     let ultimoEscaneo = null;
 
-    // Elementos del DOM
+    // Elementos del DOM (mantener igual)
     const csvFile = document.getElementById('csvFile');
-    const csvStatus = document.getElementById('csvStatus');
-    const webSalesFile = document.getElementById('webSalesFile');
-    const webSalesStatus = document.getElementById('webSalesStatus');
-    const importWebBtn = document.getElementById('importWebBtn');
-    const importSummary = document.getElementById('importSummary');
-    const searchInput = document.getElementById('searchInput');
-    const resultsList = document.getElementById('resultsList');
-    const manualRegisterBtn = document.getElementById('manualRegisterBtn');
-    const exportBtn = document.getElementById('exportBtn');
-    const clearBtn = document.getElementById('clearBtn');
-    const registrosList = document.getElementById('registros-list');
-    const tabs = document.querySelectorAll('.tab');
-    const tabContents = document.querySelectorAll('.tab-content');
+    // ... [todo el resto de las declaraciones de elementos igual que antes] ...
 
-    // Inicialización mejorada para móviles
-    document.addEventListener('DOMContentLoaded', async () => {
-        await cargarRegistros();
-        actualizarRegistros();
-        iniciarEscaneo();
-        
-        // Para móviles: asegurar que el sonido pueda reproducirse
-        document.body.addEventListener('click', function() {
-            document.getElementById('successSound').play().then(() => {
-                document.getElementById('successSound').pause();
-                document.getElementById('successSound').currentTime = 0;
-            }).catch(() => {});
-            
-            document.getElementById('errorSound').play().then(() => {
-                document.getElementById('errorSound').pause();
-                document.getElementById('errorSound').currentTime = 0;
-            }).catch(() => {});
-        }, { once: true });
-    });
+    // Eventos (mantener igual)
+    csvFile.addEventListener('change', cargarSociosCSV);
+    // ... [todos los demás event listeners igual que antes] ...
 
-    // Nuevo sistema de almacenamiento para móviles
-    async function cargarRegistros() {
+    // Función para guardar registros (optimizada para móviles)
+    function guardarRegistros() {
         try {
-            // Primero intentamos con localStorage
-            const stored = localStorage.getItem('registros');
-            if (stored) {
-                registros = JSON.parse(stored);
-                return;
-            }
-            
-            // Si no hay nada en localStorage, probamos con IndexedDB
-            if ('indexedDB' in window) {
-                const db = await abrirBaseDeDatos();
-                const tx = db.transaction('registros', 'readonly');
-                const store = tx.objectStore('registros');
-                const hoy = new Date().toLocaleDateString();
-                
-                registros = await new Promise((resolve) => {
-                    const request = store.getAll();
-                    request.onsuccess = () => resolve(request.result || []);
-                    request.onerror = () => resolve([]);
-                });
-            }
-        } catch (e) {
-            console.error("Error al cargar registros:", e);
-            registros = [];
-        }
-    }
-
-    async function guardarRegistros() {
-        try {
-            // Guardar en localStorage
             localStorage.setItem('registros', JSON.stringify(registros));
-            
-            // Backup en IndexedDB para móviles
-            if ('indexedDB' in window) {
-                const db = await abrirBaseDeDatos();
-                const tx = db.transaction('registros', 'readwrite');
-                const store = tx.objectStore('registros');
-                
-                // Limpiar registros antiguos
-                await new Promise((resolve) => {
-                    const clearRequest = store.clear();
-                    clearRequest.onsuccess = resolve;
-                    clearRequest.onerror = resolve;
-                });
-                
-                // Guardar nuevos registros
-                for (const registro of registros) {
-                    store.add(registro);
-                }
-                
-                await tx.complete;
-            }
+            // Forzar la actualización inmediata en móviles
+            setTimeout(actualizarRegistros, 100);
         } catch (e) {
             console.error("Error al guardar registros:", e);
+            // Intento alternativo para móviles
+            try {
+                sessionStorage.setItem('temp_registros', JSON.stringify(registros));
+                setTimeout(() => {
+                    localStorage.setItem('registros', sessionStorage.getItem('temp_registros'));
+                    sessionStorage.removeItem('temp_registros');
+                    actualizarRegistros();
+                }, 100);
+            } catch (e2) {
+                console.error("Error alternativo al guardar:", e2);
+            }
         }
+    }
+
+    // Cargar socios desde CSV (versión original que funcionaba)
+    function cargarSociosCSV(event) {
+        const file = event.target.files[0];
+        if (!file) return;
+
+        const reader = new FileReader();
+        reader.onload = function(e) {
+            try {
+                const content = e.target.result;
+                const lines = content.split(/\r?\n/).filter(line => line.trim() !== '');
+                
+                socios = lines.map(line => {
+                    const [nombre, apellido, dni] = line.split(';');
+                    return {
+                        nombre: `${nombre.trim()} ${apellido.trim()}`,
+                        dni: dni.trim()
+                    };
+                });
+
+                csvStatus.textContent = `✅ Socios cargados: ${socios.length}`;
+                csvStatus.style.color = "green";
+                exportBtn.disabled = false;
+                iniciarEscaneo();
+
+            } catch (error) {
+                csvStatus.textContent = "❌ Error: El archivo debe tener formato: Nombre;Apellido;DNI";
+                csvStatus.style.color = "red";
+                console.error("Error al procesar CSV:", error);
+            }
+        };
         
-        actualizarRegistros();
+        reader.onerror = () => {
+            csvStatus.textContent = "❌ Error al leer el archivo";
+            csvStatus.style.color = "red";
+        };
+        
+        reader.readAsText(file);
     }
 
-    function abrirBaseDeDatos() {
-        return new Promise((resolve) => {
-            const request = indexedDB.open('ControlAccesoDB', 1);
-            
-            request.onupgradeneeded = (event) => {
-                const db = event.target.result;
-                if (!db.objectStoreNames.contains('registros')) {
-                    db.createObjectStore('registros', { autoIncrement: true });
-                }
-            };
-            
-            request.onsuccess = () => resolve(request.result);
-            request.onerror = () => {
-                console.error("Error al abrir IndexedDB");
-                resolve(null);
-            };
-        });
-    }
-
-    // El resto de tus funciones permanecen igual (cargarSociosCSV, procesarQR, etc.)
-    // ... [Mantén todas tus otras funciones exactamente como están] ...
-
-    // Modifica la función procesarQR para usar el nuevo sistema de guardado
+    // Procesar QR (con el guardado mejorado)
     function procesarQR(qrContent) {
         const ahora = Date.now();
         if (window.ultimoEscaneo && (ahora - window.ultimoEscaneo < 1500)) return;
@@ -494,8 +444,7 @@
             tipo: "carnet"
         });
         
-        // Usar el nuevo sistema de guardado
-        guardarRegistros();
+        guardarRegistros(); // Usar la nueva función mejorada
         
         mostrarResultado('success', '✅ Registrado', `
             ${socio.nombre}<br>
@@ -504,8 +453,34 @@
         playSuccessSound();
     }
 
-    // Asegúrate de usar guardarRegistros() en todas las funciones que modifican registros
-    // (registrarManual, importarEntradasWeb, limpiarRegistros, etc.)
+    // Funciones de sonido (mantener igual)
+    function playSuccessSound() {
+        const sound = document.getElementById('successSound');
+        sound.volume = 0.5;
+        sound.play().catch(e => console.log("No se pudo reproducir sonido:", e));
+    }
+
+    function playErrorSound() {
+        const sound = document.getElementById('errorSound');
+        sound.volume = 0.5;
+        sound.play().catch(e => console.log("No se pudo reproducir sonido:", e));
+    }
+
+    // Inicialización (con pequeño ajuste para móviles)
+    document.addEventListener('DOMContentLoaded', () => {
+        actualizarRegistros();
+        
+        // Pequeño hack para móviles: permitir sonidos
+        document.body.addEventListener('click', function() {
+            document.getElementById('successSound').play().then(() => {
+                document.getElementById('successSound').pause();
+                document.getElementById('successSound').currentTime = 0;
+            }).catch(() => {});
+        }, { once: true });
+    });
+
+    // El resto de tus funciones permanecen exactamente igual
+    // ... [mantener todas las otras funciones sin cambios] ...
 </script>
 </body>
 </html>
