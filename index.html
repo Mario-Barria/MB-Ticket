@@ -380,44 +380,51 @@
     });
 
     // Cargar socios desde CSV
-    function cargarSociosCSV(event) {
-      const file = event.target.files[0];
-      if (!file) return;
+    // Cargar socios desde CSV (versión original que funcionaba)
+function cargarSociosCSV(event) {
+  const file = event.target.files[0];
+  if (!file) return;
 
-      const reader = new FileReader();
-      reader.onload = function(e) {
-        try {
-          const content = e.target.result;
-          const lines = content.split(/\r?\n/).filter(line => line.trim() !== '');
-          
-          socios = lines.map(line => {
-            const [nombre, apellido, dni] = line.split(';');
-            return {
-              nombre: `${nombre.trim()} ${apellido.trim()}`,
-              dni: dni.trim()
-            };
-          });
-
-          csvStatus.textContent = `✅ Socios cargados: ${socios.length}`;
-          csvStatus.style.color = "green";
-          exportBtn.disabled = false;
-          iniciarEscaneo();
-
-        } catch (error) {
-          csvStatus.textContent = "❌ Error: El archivo debe tener formato: Nombre;Apellido;DNI";
-          csvStatus.style.color = "red";
-          console.error("Error al procesar CSV:", error);
-        }
-      };
+  const reader = new FileReader();
+  reader.onload = function(e) {
+    try {
+      const content = e.target.result;
+      // Eliminar BOM si existe (para compatibilidad con Excel)
+      const contentWithoutBOM = content.replace(/^\uFEFF/, '');
+      const lines = contentWithoutBOM.split(/\r?\n/).filter(line => line.trim() !== '');
       
-      reader.onerror = () => {
-        csvStatus.textContent = "❌ Error al leer el archivo";
-        csvStatus.style.color = "red";
-      };
-      
-      reader.readAsText(file);
+      socios = lines.map(line => {
+        // Manejar CSV con punto y coma o coma
+        const separator = line.includes(';') ? ';' : ',';
+        const [nombre, apellido, dni] = line.split(separator);
+        return {
+          nombre: `${nombre.trim()} ${apellido.trim()}`,
+          dni: dni.trim()
+        };
+      });
+
+      csvStatus.textContent = `✅ Socios cargados: ${socios.length}`;
+      csvStatus.style.color = "green";
+      exportBtn.disabled = false;
+      iniciarEscaneo();
+
+      // Debug: mostrar primeros socios en consola
+      console.log("Socios cargados:", socios.slice(0, 5));
+
+    } catch (error) {
+      csvStatus.textContent = "❌ Error: El archivo debe tener formato: Nombre,Apellido,DNI o Nombre;Apellido;DNI";
+      csvStatus.style.color = "red";
+      console.error("Error al procesar CSV:", error);
     }
-
+  };
+  
+  reader.onerror = () => {
+    csvStatus.textContent = "❌ Error al leer el archivo";
+    csvStatus.style.color = "red";
+  };
+  
+  reader.readAsText(file, 'UTF-8');
+}
     // Cargar entradas web desde Excel/CSV
     function cargarEntradasWeb(event) {
       const file = event.target.files[0];
