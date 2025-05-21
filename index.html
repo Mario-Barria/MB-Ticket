@@ -264,9 +264,10 @@
 <body>
   <div class="container">
     <header>
-  <img src="Logo MB-ticket.png" alt="Logo" class="logo">
-  <h1>Control de Acceso - Estadio</h1>
-</header>
+      <img src="Logo MB-ticket.png" alt="Logo" class="logo">
+      <h1>Control de Acceso - Estadio</h1>
+    </header>
+
     <div class="tabs">
       <div class="tab active" data-tab="ingreso">Registro de Ingresos</div>
       <div class="tab" data-tab="importar">Importar Entradas Web</div>
@@ -380,51 +381,44 @@
     });
 
     // Cargar socios desde CSV
-    // Cargar socios desde CSV (versión original que funcionaba)
-function cargarSociosCSV(event) {
-  const file = event.target.files[0];
-  if (!file) return;
+    function cargarSociosCSV(event) {
+      const file = event.target.files[0];
+      if (!file) return;
 
-  const reader = new FileReader();
-  reader.onload = function(e) {
-    try {
-      const content = e.target.result;
-      // Eliminar BOM si existe (para compatibilidad con Excel)
-      const contentWithoutBOM = content.replace(/^\uFEFF/, '');
-      const lines = contentWithoutBOM.split(/\r?\n/).filter(line => line.trim() !== '');
+      const reader = new FileReader();
+      reader.onload = function(e) {
+        try {
+          const content = e.target.result;
+          const lines = content.split(/\r?\n/).filter(line => line.trim() !== '');
+          
+          socios = lines.map(line => {
+            const [nombre, apellido, dni] = line.split(';');
+            return {
+              nombre: `${nombre.trim()} ${apellido.trim()}`,
+              dni: dni.trim()
+            };
+          });
+
+          csvStatus.textContent = `✅ Socios cargados: ${socios.length}`;
+          csvStatus.style.color = "green";
+          exportBtn.disabled = false;
+          iniciarEscaneo();
+
+        } catch (error) {
+          csvStatus.textContent = "❌ Error: El archivo debe tener formato: Nombre;Apellido;DNI";
+          csvStatus.style.color = "red";
+          console.error("Error al procesar CSV:", error);
+        }
+      };
       
-      socios = lines.map(line => {
-        // Manejar CSV con punto y coma o coma
-        const separator = line.includes(';') ? ';' : ',';
-        const [nombre, apellido, dni] = line.split(separator);
-        return {
-          nombre: `${nombre.trim()} ${apellido.trim()}`,
-          dni: dni.trim()
-        };
-      });
-
-      csvStatus.textContent = `✅ Socios cargados: ${socios.length}`;
-      csvStatus.style.color = "green";
-      exportBtn.disabled = false;
-      iniciarEscaneo();
-
-      // Debug: mostrar primeros socios en consola
-      console.log("Socios cargados:", socios.slice(0, 5));
-
-    } catch (error) {
-      csvStatus.textContent = "❌ Error: El archivo debe tener formato: Nombre,Apellido,DNI o Nombre;Apellido;DNI";
-      csvStatus.style.color = "red";
-      console.error("Error al procesar CSV:", error);
+      reader.onerror = () => {
+        csvStatus.textContent = "❌ Error al leer el archivo";
+        csvStatus.style.color = "red";
+      };
+      
+      reader.readAsText(file);
     }
-  };
-  
-  reader.onerror = () => {
-    csvStatus.textContent = "❌ Error al leer el archivo";
-    csvStatus.style.color = "red";
-  };
-  
-  reader.readAsText(file, 'UTF-8');
-}
+
     // Cargar entradas web desde Excel/CSV
     function cargarEntradasWeb(event) {
       const file = event.target.files[0];
@@ -576,8 +570,7 @@ function iniciarEscaneo() {
   });
 }
 
-    // Procesar QR
-    // REEMPLAZAR FUNCIÓN procesarQR()
+// REEMPLAZAR FUNCIÓN procesarQR()
 function procesarQR(qrContent) {
   // Usar temporizador para permitir re-escaneo después de 1.5 segundos
   const ahora = Date.now();
@@ -673,36 +666,22 @@ function procesarQR(qrContent) {
 
     // Actualizar registros
     function actualizarRegistros() {
-  // Método ultra-compatible para móviles
-  const hoy = new Date().toLocaleDateString();
-  const registrosGuardados = localStorage.getItem('registros');
-  const registros = registrosGuardados ? JSON.parse(registrosGuardados) : [];
-  
-  const registrosHoy = registros.filter(r => 
-    new Date(r.fecha).toLocaleDateString() === hoy
-  );
+      const hoy = new Date().toLocaleDateString();
+      const registrosHoy = registros.filter(r => 
+        new Date(r.fecha).toLocaleDateString() === hoy
+      );
 
-  // Limpiar y reconstruir manualmente
-  const lista = document.getElementById('registros-list');
-  lista.innerHTML = ''; // Limpiar primero
-  
-  if (registrosHoy.length === 0) {
-    lista.innerHTML = '<p>No hay registros aún.</p>';
-    return;
-  }
+      registrosList.innerHTML = registrosHoy.length > 0
+        ? registrosHoy.map(r => `
+            <div class="registro-item">
+              <strong>${r.fecha}</strong><br>
+              ${r.nombre} (DNI: ${r.dni})<br>
+              <small>Tipo: ${r.tipo === 'web' ? 'Entrada Web' : r.tipo === 'manual' ? 'Registro Manual' : 'Carnet'}</small>
+            </div>
+          `).join('')
+        : '<p>No hay registros aún.</p>';
+    }
 
-  // Crear elementos DOM manualmente
-  registrosHoy.forEach(r => {
-    const item = document.createElement('div');
-    item.className = 'registro-item';
-    item.innerHTML = `
-      <strong>${r.fecha}</strong><br>
-      ${r.nombre} (DNI: ${r.dni})<br>
-      <small>Tipo: ${r.tipo === 'web' ? 'Entrada Web' : r.tipo === 'manual' ? 'Registro Manual' : 'Carnet'}</small>
-    `;
-    lista.appendChild(item);
-  });
-}
     // Exportar registros
     function exportarRegistros() {
       const hoy = new Date().toLocaleDateString();
@@ -737,29 +716,19 @@ function procesarQR(qrContent) {
 
     // Mostrar resultado
     function mostrarResultado(tipo, icono, mensaje) {
-  const result = document.getElementById('result');
-  result.innerHTML = `
-    <div class="icon">${icono}</div>
-    <div>${mensaje}</div>
-  `;
-  result.className = tipo;
-  result.style.display = 'block';
+      const result = document.getElementById('result');
+      result.innerHTML = `
+        <div class="icon">${icono}</div>
+        <div>${mensaje}</div>
+      `;
+      result.className = tipo;
+      result.style.display = 'block';
+      
+      setTimeout(() => {
+        result.style.display = 'none';
+      }, 3000);
+    }
 
-  // Reproducir sonido directamente (sin activación previa)
-  try {
-    const sound = tipo === 'success' ? 
-      document.getElementById('successSound') : 
-      document.getElementById('errorSound');
-    sound.currentTime = 0;
-    sound.play().catch(e => console.log("Navegador bloqueó sonido automático:", e));
-  } catch (e) {
-    console.log("Error en sonido:", e);
-  }
-
-  setTimeout(() => {
-    result.style.display = 'none';
-  }, 3000);
-}
     // Verificar si es hoy
     function esHoy(fechaStr) {
       const fechaRegistro = new Date(fechaStr);
@@ -768,28 +737,31 @@ function procesarQR(qrContent) {
              fechaRegistro.getMonth() === hoy.getMonth() && 
              fechaRegistro.getFullYear() === hoy.getFullYear();
     }
-/ ===== SISTEMA DE ACTUALIZACIÓN PARA MÓVILES ===== //
-// 1. Actualizar cada 2 segundos (solo en móvil)
-if (/Android|iPhone|iPad/i.test(navigator.userAgent)) {
-  setInterval(actualizarRegistros, 2000);
+// ===== SOLUCIÓN PARA PROBLEMAS DE PWA =====
+// 1. Forzar la actualización de registros al cargar
+document.addEventListener('DOMContentLoaded', () => {
+  actualizarRegistros();
   
-  // 2. Actualizar al hacer clic en cualquier parte
-  document.addEventListener('click', actualizarRegistros);
-  
-  // 3. Guardar automáticamente
-  const originalPush = Array.prototype.push;
-  Array.prototype.push = function() {
-    const result = originalPush.apply(this, arguments);
-    localStorage.setItem('registros', JSON.stringify(registros));
-    setTimeout(actualizarRegistros, 500); // Actualizar con retraso
-    return result;
+  // 2. Solucionar doble registro manual
+  const originalRegister = registrarManual;
+  registrarManual = function() {
+    const hoy = new Date().toLocaleDateString();
+    if (selectedSocio && registros.some(r => 
+      r.dni === selectedSocio.dni && 
+      new Date(r.fecha).toLocaleDateString() === hoy
+    )) {
+      mostrarResultado('error', '❌ Ya ingresó hoy', selectedSocio.nombre);
+      document.getElementById('errorSound').play();
+      return;
+    }
+    originalRegister.apply(this, arguments);
   };
-}
+});
 
-// Actualizar al cargar
-document.addEventListener('DOMContentLoaded', actualizarRegistros);
-
-
+// 3. Asegurar que localStorage se sincronice
+window.addEventListener('beforeunload', () => {
+  localStorage.setItem('registros', JSON.stringify(registros));
+});
   </script>
 </body>
 </html>
