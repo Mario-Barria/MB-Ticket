@@ -332,7 +332,7 @@
     <script>
         // Variables globales
         let socios = [];
-        let registros = JSON.parse(localStorage.getItem('registros')) || [];
+        let registros = [];
         let entradasWeb = JSON.parse(localStorage.getItem('entradasWeb')) || [];
         let scanner;
         let selectedSocio = null;
@@ -784,5 +784,67 @@
             guardarRegistros();
         });
     </script>
+<script>
+// Función para abrir la base de datos
+function abrirDB() {
+    return new Promise((resolve, reject) => {
+        const request = indexedDB.open('MBTicketDB', 1);
+        request.onerror = () => reject('Error al abrir la base de datos');
+        request.onsuccess = () => resolve(request.result);
+        request.onupgradeneeded = (e) => {
+            const db = e.target.result;
+            if (!db.objectStoreNames.contains('registros')) {
+                db.createObjectStore('registros', { keyPath: 'codigo' });
+            }
+        };
+    });
+}
+
+// Guardar un registro
+function guardarRegistroDB(registro) {
+    abrirDB().then(db => {
+        const tx = db.transaction('registros', 'readwrite');
+        const store = tx.objectStore('registros');
+        store.put(registro);
+    });
+}
+
+// Cargar todos los registros al iniciar
+function cargarRegistros() {
+    abrirDB().then(db => {
+        const tx = db.transaction('registros', 'readonly');
+        const store = tx.objectStore('registros');
+        const request = store.getAll();
+        request.onsuccess = () => {
+            registros = request.result;
+            actualizarListaRegistros();
+        };
+    });
+}
+
+// Verificar si ya existe
+function existeRegistro(codigo) {
+    return registros.some(r => r.codigo === codigo);
+}
+
+// Sobrescribir la función al escanear
+function registrarEntrada(codigo) {
+    if (codigo && !existeRegistro(codigo)) {
+        const registro = {
+            codigo,
+            hora: new Date().toLocaleTimeString()
+        };
+        registros.push(registro);
+        guardarRegistroDB(registro);
+        actualizarListaRegistros();
+    } else {
+        alert('Este código ya fue escaneado.');
+    }
+}
+
+// Cargar al iniciar
+document.addEventListener('DOMContentLoaded', cargarRegistros);
+</script>
+
 </body>
 </html>
