@@ -265,7 +265,10 @@
   <div class="container">
     <header>
   <img src="Logo MB-ticket.png" alt="Logo" class="logo">
-  <button id="activarSonidos" style="background: var(--success); margin-bottom: 10px; padding: 10px 15px; border-radius: 5px; color: white; border: none; cursor: pointer;">Activar Sonidos</button>
+  <button id="activarSonidos" style="background: #27ae60; color: white; padding: 10px; border: none; border-radius: 5px; margin-bottom: 10px; cursor: pointer;">
+    Activar Sonidos
+  </button>
+  <p id="sonidoStatus" style="color: red; font-size: 12px; display: none;">Sonidos desactivados (haz clic en el botón)</p>
   <h1>Control de Acceso - Estadio</h1>
 </header>
     <div class="tabs">
@@ -724,22 +727,18 @@ function procesarQR(qrContent) {
   `;
   result.className = tipo;
   result.style.display = 'block';
-  
-  // Reproducir sonido
-  try {
-    if (tipo === 'success' && window.sonidosActivados) {
-      const sound = document.getElementById('successSound');
-      sound.currentTime = 0; // Reiniciar si ya está sonando
-      sound.play();
-    } else if (tipo === 'error' && window.sonidosActivados) {
-      const sound = document.getElementById('errorSound');
-      sound.currentTime = 0;
-      sound.play();
-    }
-  } catch (e) {
-    console.log("Error con sonido:", e);
+
+  // Sonidos
+  if (tipo === 'success' && window.sonidosActivados) {
+    const sound = document.getElementById('successSound');
+    sound.currentTime = 0;
+    sound.play().catch(e => console.log("Error al reproducir sonido:", e));
+  } else if (tipo === 'error' && window.sonidosActivados) {
+    const sound = document.getElementById('errorSound');
+    sound.currentTime = 0;
+    sound.play().catch(e => console.log("Error al reproducir sonido:", e));
   }
-  
+
   setTimeout(() => {
     result.style.display = 'none';
   }, 3000);
@@ -779,26 +778,25 @@ window.addEventListener('beforeunload', () => {
   localStorage.setItem('registros', JSON.stringify(registros));
 });
 // ===== [INICIO] CÓDIGO NUEVO ===== //
-// Activar sonidos (requerido en móviles)
 document.getElementById('activarSonidos')?.addEventListener('click', () => {
-  document.getElementById('successSound').play()
+  const sound = document.getElementById('successSound');
+  sound.play()
     .then(() => {
       window.sonidosActivados = true;
-      const boton = document.getElementById('activarSonidos');
-      if (boton) boton.style.display = 'none';
+      document.getElementById('activarSonidos').style.display = 'none';
+      document.getElementById('sonidoStatus').style.display = 'none';
     })
     .catch(e => {
-      console.error("Error activando sonidos:", e);
+      document.getElementById('sonidoStatus').style.display = 'block';
+      console.error("Error al activar sonidos:", e);
     });
 });
 
-// Solución definitiva para actualización de lista
+// Forzar actualización de lista en móviles
 function actualizarRegistros() {
   const hoy = new Date().toLocaleDateString();
-  const registrosHoy = registros.filter(r => 
-    new Date(r.fecha).toLocaleDateString() === hoy
-  );
-
+  const registrosHoy = registros.filter(r => new Date(r.fecha).toLocaleDateString() === hoy);
+  
   registrosList.innerHTML = registrosHoy.length > 0
     ? registrosHoy.map(r => `
         <div class="registro-item">
@@ -810,19 +808,11 @@ function actualizarRegistros() {
     : '<p>No hay registros aún.</p>';
 }
 
-// Actualización automática para móviles
+// Actualizar cada 500ms en móviles
 if (/Android|iPhone|iPad/i.test(navigator.userAgent)) {
   setInterval(actualizarRegistros, 500);
-  
-  // Guardar registros automáticamente
-  const originalPush = Array.prototype.push;
-  Array.prototype.push = function() {
-    const result = originalPush.apply(this, arguments);
-    localStorage.setItem('registros', JSON.stringify(registros));
-    actualizarRegistros();
-    return result;
-  };
 }
-// ===== [FIN] CÓDIGO NUEVO ===== //  </script>
+// ===== [FIN] CÓDIGO NUEVO ===== //
+  </script>
 </body>
 </html>
