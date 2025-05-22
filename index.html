@@ -784,5 +784,18 @@
             guardarRegistros();
         });
     </script>
+<!-- Verificación rápida de localStorage en móviles -->
+<script>
+document.addEventListener("DOMContentLoaded", () => {
+    try {
+        localStorage.setItem("test", "ok");
+        const test = localStorage.getItem("test");
+        alert("¿LocalStorage funciona? → " + test);
+    } catch (e) {
+        alert("Error usando localStorage: " + e.message);
+    }
+});
+</script>
+
 </body>
 </html>
