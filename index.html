@@ -567,97 +567,97 @@
 
         // Procesar código QR escaneado
         function procesarQR(qrContent) {
-    const ahora = Date.now();
-    if (window.ultimoEscaneo && (ahora - window.ultimoEscaneo < 1500)) return;
-    window.ultimoEscaneo = ahora;
+  const ahora = Date.now();
+  if (window.ultimoEscaneo && (ahora - window.ultimoEscaneo < 1500)) return;
+  window.ultimoEscaneo = ahora;
 
-    const dni = qrContent.split('=')[1] || qrContent;
-    const socio = socios.find(s => s.dni === dni.trim());
+  const dni = qrContent.split('=')[1] || qrContent;
+  const socio = socios.find(s => s.dni === dni.trim());
 
-    if (!socio) {
-        mostrarResultado('error', '❌ No registrado', `DNI: ${dni}`);
-        playErrorSound();
-        return;
-    }
+  if (!socio) {
+    mostrarResultado('error', '❌ No registrado', `DNI: ${dni}`);
+    playErrorSound();
+    return;
+  }
 
-    cargarRegistros(); // ✅ cargar del localStorage lo más reciente
+  cargarRegistros(); // ✅ importante para que no se pierdan los registros existentes
 
-    const hoy = new Date().toLocaleDateString();
-    const yaRegistrado = registros.some(r =>
-        r.dni === socio.dni &&
-        new Date(r.fecha).toLocaleDateString() === hoy
-    );
+  const hoy = new Date().toLocaleDateString();
+  const yaRegistrado = registros.some(r =>
+    r.dni === socio.dni &&
+    new Date(r.fecha).toLocaleDateString() === hoy
+  );
 
-    if (yaRegistrado) {
-        mostrarResultado('error', '❌ Ya ingresó hoy', `
-            ${socio.nombre}<br>
-            DNI: ${socio.dni}
-        `);
-        playErrorSound();
-        return;
-    }
-
-    registros.push({
-        dni: socio.dni,
-        nombre: socio.nombre,
-        fecha: new Date().toLocaleString(),
-        tipo: "carnet"
-    });
-
-    guardarRegistros();
-    actualizarRegistros();
-
-    mostrarResultado('success', '✅ Registrado', `
+  if (yaRegistrado) {
+    mostrarResultado('error', '❌ Ya ingresó hoy', `
         ${socio.nombre}<br>
         DNI: ${socio.dni}
     `);
-    playSuccessSound();
+    playErrorSound();
+    return;
+  }
+
+  registros.push({
+    dni: socio.dni,
+    nombre: socio.nombre,
+    fecha: new Date().toLocaleString(),
+    tipo: "escaneo"
+  });
+
+  guardarRegistros();
+  actualizarRegistros();
+
+  mostrarResultado('success', '✅ Registrado', `
+      ${socio.nombre}<br>
+      DNI: ${socio.dni}
+  `);
+  playSuccessSound();
 }
 
         // Registrar manualmente
         function registrarManual() {
-    cargarRegistros(); // ✅ asegurar que tengamos la lista completa
-    if (!selectedSocio) {
-        mostrarResultado('error', '❌ Error', 'Seleccione un socio de la lista');
-        playErrorSound();
-        return;
-    }
+  cargarRegistros();
 
-    const hoy = new Date().toLocaleDateString();
-    const registroExistente = registros.find(r =>
-        r.dni === selectedSocio.dni &&
-        new Date(r.fecha).toLocaleDateString() === hoy
-    );
+  if (!selectedSocio) {
+    mostrarResultado('error', '❌ Error', 'Seleccione un socio de la lista');
+    playErrorSound();
+    return;
+  }
 
-    if (registroExistente) {
-        mostrarResultado('error', '❌ Ya ingresó hoy', `
-            ${selectedSocio.nombre}<br>
-            DNI: ${selectedSocio.dni}<br>
-            Hora: ${registroExistente.fecha.split(',')[1].trim()}
-        `);
-        playErrorSound();
-        return;
-    }
+  const hoy = new Date().toLocaleDateString();
+  const registroExistente = registros.find(r =>
+    r.dni === selectedSocio.dni &&
+    new Date(r.fecha).toLocaleDateString() === hoy
+  );
 
-    const registro = {
-        dni: selectedSocio.dni,
-        nombre: selectedSocio.nombre,
-        fecha: new Date().toLocaleString(),
-        tipo: "manual"
-    };
+  if (registroExistente) {
+    mostrarResultado('error', '❌ Ya ingresó hoy', `
+        ${selectedSocio.nombre}<br>
+        DNI: ${selectedSocio.dni}<br>
+        Hora: ${registroExistente.fecha.split(',')[1].trim()}
+    `);
+    playErrorSound();
+    return;
+  }
 
-    registros.push(registro);
-    guardarRegistros();
-    actualizarRegistros();
+  const registro = {
+    dni: selectedSocio.dni,
+    nombre: selectedSocio.nombre,
+    fecha: new Date().toLocaleString(),
+    tipo: "manual"
+  };
 
-    mostrarResultado('success', '✅ Registrado', selectedSocio.nombre);
-    playSuccessSound();
+  registros.push(registro);
+  guardarRegistros();
+  actualizarRegistros();
 
-    // Limpiar búsqueda
-    searchInput.value = '';
-    resultsList.style.display = 'none';
-    selectedSocio = null;
-    manualRegisterBtn.disabled = true;
+  mostrarResultado('success', '✅ Registrado', selectedSocio.nombre);
+  playSuccessSound();
+
+  if (typeof searchInput !== 'undefined') searchInput.value = '';
+  if (typeof resultsList !== 'undefined') resultsList.style.display = 'none';
+  selectedSocio = null;
+  if (typeof manualRegisterBtn !== 'undefined') manualRegisterBtn.disabled = true;
 }
 
         // Actualizar registros
@@ -734,13 +734,13 @@
                    fechaRegistro.getFullYear() === hoy.getFullYear();
         }
 function cargarRegistros() {
-    try {
-        const data = localStorage.getItem('registros');
-        registros = data ? JSON.parse(data) : [];
-    } catch (e) {
-        registros = [];
-        console.warn("No se pudo cargar registros del almacenamiento local");
-    }
+  try {
+    const data = localStorage.getItem('registros');
+    registros = data ? JSON.parse(data) : [];
+  } catch (e) {
+    registros = [];
+    console.warn("⚠️ No se pudo cargar registros del almacenamiento local");
+  }
 }
         
 // Función para guardar registros (optimizada para móviles)
