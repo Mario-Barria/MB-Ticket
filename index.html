@@ -616,6 +616,7 @@
 
         // Registrar manualmente
         function registrarManual() {
+            cargarRegistros(); // ✅ Asegura que el array tenga los datos previos
             if (!selectedSocio) {
                 mostrarResultado('error', '❌ Error', 'Seleccione un socio de la lista');
                 playErrorSound();
