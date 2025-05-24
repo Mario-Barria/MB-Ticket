@@ -636,48 +636,50 @@ function exportarRegistros() {
 
         // Registrar manualmente
         function registrarManual() {
-            if (!selectedSocio) {
-                mostrarResultado('error', '❌ Error', 'Seleccione un socio de la lista');
-                playErrorSound();
-                return;
-            }
+    cargarRegistros(); // Asegura datos actuales
 
-            const hoy = new Date().toLocaleDateString();
-            const registroExistente = registros.find(r => 
-                r.dni === selectedSocio.dni && 
-                esHoyISO(r.fecha)
-            );
+    if (!selectedSocio) {
+        mostrarResultado('error', '❌ Error', 'Seleccione un socio de la lista');
+        playErrorSound();
+        return;
+    }
 
-            if (registroExistente) {
-                mostrarResultado('error', '❌ Ya ingresó hoy', `
-                    ${selectedSocio.nombre}<br>
-                    DNI: ${selectedSocio.dni}<br>
-                    Hora: ${registroExistente.fecha.split(',')[1].trim()}
-                `);
-                playErrorSound();
-                return;
-            }
+    const hoy = new Date().toISOString().slice(0, 10);
+    const yaIngresado = registros.find(r =>
+        r.dni === selectedSocio.dni &&
+        r.fecha.slice(0, 10) === hoy
+    );
 
-            const registro = {
-                dni: selectedSocio.dni,
-                nombre: selectedSocio.nombre,
-                fecha: new Date().toISOString(),
-                tipo: "manual"
-            };
-            
-            registros.push(registro);
-            guardarRegistros();
-            actualizarRegistros();
-            
-            mostrarResultado('success', '✅ Registrado', selectedSocio.nombre);
-            playSuccessSound();
-            
-            // Limpiar búsqueda
-            searchInput.value = '';
-            resultsList.style.display = 'none';
-            selectedSocio = null;
-            manualRegisterBtn.disabled = true;
-        }
+    if (yaIngresado) {
+        mostrarResultado('error', '❌ Ya ingresó hoy', `
+            ${selectedSocio.nombre}<br>
+            DNI: ${selectedSocio.dni}<br>
+            Hora: ${new Date(yaIngresado.fecha).toLocaleTimeString()}
+        `);
+        playErrorSound();
+        return;
+    }
+
+    const registro = {
+        dni: selectedSocio.dni,
+        nombre: selectedSocio.nombre,
+        fecha: new Date().toISOString(),
+        tipo: "manual"
+    };
+
+    registros.push(registro);
+    guardarRegistros();
+    actualizarRegistros();
+
+    mostrarResultado('success', '✅ Registrado', selectedSocio.nombre);
+    playSuccessSound();
+
+    // Limpiar búsqueda
+    searchInput.value = '';
+    resultsList.style.display = 'none';
+    selectedSocio = null;
+    manualRegisterBtn.disabled = true;
+}
 
         // Actualizar registros
         function actualizarRegistros() {
