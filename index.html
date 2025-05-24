@@ -636,8 +636,6 @@ function exportarRegistros() {
 
         // Registrar manualmente
         function registrarManual() {
-    cargarRegistros(); // Asegura datos actuales
-
     if (!selectedSocio) {
         mostrarResultado('error', '❌ Error', 'Seleccione un socio de la lista');
         playErrorSound();
@@ -680,6 +678,7 @@ function exportarRegistros() {
     selectedSocio = null;
     manualRegisterBtn.disabled = true;
 }
+
 
         // Actualizar registros
         function actualizarRegistros() {
