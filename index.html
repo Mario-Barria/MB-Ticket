@@ -598,7 +598,7 @@
     playErrorSound();
     return;
   }
-
+  cargarRegistros(); // ✅ asegura que carga los registros actuales antes de agregar
   registros.push({
     dni: socio.dni,
     nombre: socio.nombre,
@@ -649,6 +649,7 @@
     tipo: "manual"
   };
 
+  cargarRegistros(); // ✅ asegura que carga los registros actuales antes de agregar
   registros.push(registro);
   guardarRegistros();
   actualizarRegistros();
@@ -702,15 +703,13 @@
 
         // Limpiar registros
         function limpiarRegistros() {
-            if (confirm('¿Borrar todos los registros de hoy?')) {
-                const hoy = new Date().toLocaleDateString();
-                registros = registros.filter(r => 
-                    new Date(r.fecha).toLocaleDateString() !== hoy
-                );
-                guardarRegistros();
-                actualizarRegistros();
-            }
-        }
+  if (confirm("¿Estás seguro de que querés borrar todos los registros?")) {
+    localStorage.removeItem('registros');
+    registros = [];
+    actualizarRegistros();
+    mostrarVistaRegistrosDebug(); // ✅ actualiza la vista rápida
+  }
+}
 
         // Mostrar resultado
         function mostrarResultado(tipo, icono, mensaje) {
@@ -747,13 +746,9 @@ function cargarRegistros() {
         
 // Función para guardar registros (optimizada para móviles)
         function guardarRegistros() {
-            try {
-                localStorage.setItem('registros', JSON.stringify(registros));
-                console.log('Registros guardados correctamente');
-            } catch (e) {
-                console.error("Error al guardar registros:", e);
-            }
-        }
+  localStorage.setItem('registros', JSON.stringify(registros));
+  mostrarVistaRegistrosDebug(); // ✅ actualiza la vista inmediata
+}
 
         // Funciones mejoradas para sonido en móviles
         function playSuccessSound() {
