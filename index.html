@@ -665,42 +665,49 @@
 
         // Actualizar registros
         function actualizarRegistros() {
-    cargarRegistros(); // ✅ ¡Esto es lo que faltaba!
+    cargarRegistros(); // 👈 Trae los registros actualizados del almacenamiento
+
     const hoy = new Date().toLocaleDateString();
+
     const registrosHoy = registros.filter(r => 
         new Date(r.fecha).toLocaleDateString() === hoy
     );
 
-            registrosList.innerHTML = registrosHoy.length > 0
-                ? registrosHoy.map(r => `
-                    <div class="registro-item">
-                        <strong>${r.fecha}</strong><br>
-                        ${r.nombre} (DNI: ${r.dni})<br>
-                        <small>Tipo: ${r.tipo === 'web' ? 'Entrada Web' : r.tipo === 'manual' ? 'Registro Manual' : 'Carnet'}</small>
-                    </div>
-                `).join('')
-                : '<p>No hay registros aún.</p>';
-        }
+    const tabla = document.getElementById("tablaRegistros");
+    if (!tabla) return;
 
-        // Exportar registros
-        function exportarRegistros() {
-            const hoy = new Date().toLocaleDateString();
-            const registrosHoy = registros.filter(r => 
-                new Date(r.fecha).toLocaleDateString() === hoy
-            );
+    // Vaciar la tabla
+    tabla.innerHTML = '';
 
-            let csv = "Fecha,Nombre,DNI,Tipo\n";
-            registrosHoy.forEach(r => {
-                csv += `"${r.fecha}","${r.nombre}","${r.dni}","${r.tipo}"\n`;
-            });
+    if (registrosHoy.length === 0) {
+        const fila = document.createElement('tr');
+        const celda = document.createElement('td');
+        celda.colSpan = 3;
+        celda.textContent = "No hay registros aún.";
+        fila.appendChild(celda);
+        tabla.appendChild(fila);
+        return;
+    }
 
-            const blob = new Blob([csv], { type: 'text/csv' });
-            const url = URL.createObjectURL(blob);
-            const a = document.createElement('a');
-            a.href = url;
-            a.download = `registros_${hoy.replace(/\//g, '-')}.csv`;
-            a.click();
-        }
+    // Agregar cada fila
+    registrosHoy.forEach(registro => {
+        const fila = document.createElement('tr');
+
+        const celdaNombre = document.createElement('td');
+        celdaNombre.textContent = registro.nombre;
+        fila.appendChild(celdaNombre);
+
+        const celdaDNI = document.createElement('td');
+        celdaDNI.textContent = registro.dni;
+        fila.appendChild(celdaDNI);
+
+        const celdaHora = document.createElement('td');
+        celdaHora.textContent = registro.fecha.split(',')[1]?.trim() || '';
+        fila.appendChild(celdaHora);
+
+        tabla.appendChild(fila);
+    });
+}
 
         // Limpiar registros
         function limpiarRegistros() {
