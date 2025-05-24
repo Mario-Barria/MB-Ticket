@@ -81,21 +81,35 @@
     }
 
     function actualizarRegistros() {
-      const hoy = new Date().toLocaleDateString();
-      const tbody = document.getElementById('tbody-registros');
-      tbody.innerHTML = '';
-      const registrosHoy = registros.filter(r => new Date(r.fecha).toLocaleDateString() === hoy);
-      if (registrosHoy.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="3">No hay registros aún.</td></tr>';
-        return;
-      }
-      registrosHoy.forEach(r => {
-        const tr = document.createElement('tr');
-        tr.innerHTML = `<td>${r.nombre}</td><td>${r.dni}</td><td>${r.fecha.split(',')[1]}</td>`;
-        tbody.appendChild(tr);
-      });
-    }
+  const hoy = new Date();
+  const hoyDia = hoy.getDate();
+  const hoyMes = hoy.getMonth();
+  const hoyAnio = hoy.getFullYear();
 
+  const tbody = document.getElementById('tbody-registros');
+  tbody.innerHTML = '';
+
+  const registrosHoy = registros.filter(r => {
+    const fecha = new Date(r.fecha);
+    return (
+      fecha.getDate() === hoyDia &&
+      fecha.getMonth() === hoyMes &&
+      fecha.getFullYear() === hoyAnio
+    );
+  });
+
+  if (registrosHoy.length === 0) {
+    tbody.innerHTML = '<tr><td colspan="3">No hay registros aún.</td></tr>';
+    return;
+  }
+
+  registrosHoy.forEach(r => {
+    const tr = document.createElement('tr');
+    const hora = r.fecha.split(',')[1] || r.fecha; // fallback
+    tr.innerHTML = `<td>${r.nombre}</td><td>${r.dni}</td><td>${hora.trim()}</td>`;
+    tbody.appendChild(tr);
+  });
+}
     function simularEscaneo() {
       const nombre = "Test Usuario";
       const dni = "99999999";
