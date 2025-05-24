@@ -1,139 +1,159 @@
-
 <!DOCTYPE html>
 <html lang="es">
 <head>
   <meta charset="UTF-8">
-  <title>MB Ticket - Escaneo</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Escaneo de Entradas - MB Ticket</title>
   <style>
-    body { font-family: Arial, sans-serif; margin: 0; padding: 20px; background: #f5f5f5; }
-    .container { max-width: 800px; margin: auto; background: white; padding: 20px; border-radius: 8px; box-shadow: 0 0 10px rgba(0,0,0,0.1); }
-    h2, h3 { color: #333; }
-    table { width: 100%; border-collapse: collapse; margin-top: 10px; }
-    th, td { padding: 8px; border-bottom: 1px solid #ccc; text-align: left; }
-    th { background: #eee; }
-    #vistaRegistrosDebug { background: #eef; padding: 10px; margin-top: 20px; font-size: 14px; }
-    button { margin-top: 10px; padding: 8px 16px; }
+    body {
+      font-family: Arial, sans-serif;
+      background: #f5f5f5;
+      margin: 0;
+      padding: 20px;
+    }
+    .container {
+      background: white;
+      max-width: 600px;
+      margin: auto;
+      padding: 20px;
+      border-radius: 8px;
+      box-shadow: 0 0 10px rgba(0,0,0,0.1);
+    }
+    h1 {
+      font-size: 20px;
+      margin-bottom: 20px;
+    }
+    button {
+      margin: 5px;
+      padding: 10px;
+      font-size: 14px;
+      cursor: pointer;
+    }
+    table {
+      width: 100%;
+      margin-top: 15px;
+      border-collapse: collapse;
+    }
+    th, td {
+      padding: 8px;
+      border-bottom: 1px solid #ccc;
+      text-align: left;
+    }
+    .debug-box {
+      background: #f0f0f0;
+      font-family: monospace;
+      padding: 10px;
+      margin-top: 15px;
+      white-space: pre-wrap;
+      border-radius: 4px;
+    }
   </style>
 </head>
 <body>
   <div class="container">
-    <h2>Escaneo de Entradas - MB Ticket</h2>
+    <h1>Escaneo de Entradas - MB Ticket</h1>
     <button onclick="simularEscaneo()">Simular escaneo</button>
     <button onclick="registrarManual()">Registrar manual</button>
     <button onclick="borrarRegistros()">Borrar registros</button>
 
-    <h3 class="panel-title">Registros de Hoy</h3>
-    <table id="tablaRegistros">
+    <h2>Registros de Hoy</h2>
+    <table id="tabla-registros">
       <thead>
-        <tr>
-          <th>Nombre</th>
-          <th>DNI</th>
-          <th>Hora</th>
-        </tr>
+        <tr><th>Nombre</th><th>DNI</th><th>Hora</th></tr>
       </thead>
-      <tbody></tbody>
+      <tbody id="tbody-registros">
+        <tr><td colspan="3">No hay registros aún.</td></tr>
+      </tbody>
     </table>
 
-    <pre id="vistaRegistrosDebug">Vista rápida de localStorage.registros</pre>
+    <h3>📦 Vista rápida de localStorage.registros</h3>
+    <div class="debug-box" id="debugBox">Esperando registros...</div>
   </div>
 
   <script>
-    let registros = JSON.parse(localStorage.getItem("registros")) || [];
-
-    function guardarRegistros() {
-      localStorage.setItem("registros", JSON.stringify(registros));
-      actualizarRegistros();
-    }
+    let registros = [];
 
     function cargarRegistros() {
-      registros = JSON.parse(localStorage.getItem("registros")) || [];
+      registros = JSON.parse(localStorage.getItem('registros') || '[]');
+    }
+
+    function guardarRegistros() {
+      localStorage.setItem('registros', JSON.stringify(registros));
     }
 
     function actualizarRegistros() {
-      cargarRegistros();
-      const hoy = new Date().toISOString().split('T')[0];
-      const tbody = document.querySelector("#tablaRegistros tbody");
-      tbody.innerHTML = "";
-
-      const registrosHoy = registros.filter(r => {
-        const fecha = new Date(r.fecha);
-        return fecha.toISOString().split('T')[0] === hoy;
-      });
-
+      const hoy = new Date().toLocaleDateString();
+      const tbody = document.getElementById('tbody-registros');
+      tbody.innerHTML = '';
+      const registrosHoy = registros.filter(r => new Date(r.fecha).toLocaleDateString() === hoy);
       if (registrosHoy.length === 0) {
-        const fila = document.createElement("tr");
-        const celda = document.createElement("td");
-        celda.colSpan = 3;
-        celda.textContent = "No hay registros aún.";
-        celda.style.textAlign = "center";
-        fila.appendChild(celda);
-        tbody.appendChild(fila);
+        tbody.innerHTML = '<tr><td colspan="3">No hay registros aún.</td></tr>';
         return;
       }
-
       registrosHoy.forEach(r => {
-        const fila = document.createElement("tr");
-        fila.innerHTML = `<td>${r.nombre}</td><td>${r.dni}</td><td>${r.fecha.split(',')[1]?.trim()}</td>`;
-        tbody.appendChild(fila);
+        const tr = document.createElement('tr');
+        tr.innerHTML = `<td>${r.nombre}</td><td>${r.dni}</td><td>${r.fecha.split(',')[1]}</td>`;
+        tbody.appendChild(tr);
       });
-
-      document.getElementById("vistaRegistrosDebug").textContent = JSON.stringify(registros, null, 2);
-    }
-
-    function procesarQR(nombre, dni) {
-      cargarRegistros();
-      const hoy = new Date().toISOString().split('T')[0];
-      const yaExiste = registros.find(r => r.dni === dni && new Date(r.fecha).toISOString().split('T')[0] === hoy);
-      if (yaExiste) {
-        alert("Este código ya fue escaneado hoy.");
-        return;
-      }
-
-      const registro = {
-        nombre: nombre,
-        dni: dni,
-        fecha: new Date().toLocaleString(),
-        tipo: "escaneo"
-      };
-      registros.push(registro);
-      guardarRegistros();
     }
 
     function simularEscaneo() {
-      procesarQR("Escaneo Test", "99999999");
+      const nombre = "Test Usuario";
+      const dni = "99999999";
+      const fecha = new Date().toLocaleString();
+      cargarRegistros();
+
+      const hoy = new Date().toLocaleDateString();
+      const yaExiste = registros.some(r => r.dni === dni && new Date(r.fecha).toLocaleDateString() === hoy);
+
+      if (yaExiste) {
+        alert("⚠️ Ya se registró este DNI hoy.");
+        return;
+      }
+
+      registros.push({ nombre, dni, fecha, tipo: "debug" });
+      guardarRegistros();
+      actualizarRegistros();
+      mostrarDebug();
     }
 
     function registrarManual() {
-      cargarRegistros();
-      const nombre = "Manual Test";
+      const nombre = "Test Manual";
       const dni = "88888888";
-      const hoy = new Date().toISOString().split('T')[0];
-      const yaExiste = registros.find(r => r.dni === dni && new Date(r.fecha).toISOString().split('T')[0] === hoy);
+      const fecha = new Date().toLocaleString();
+      cargarRegistros();
+
+      const hoy = new Date().toLocaleDateString();
+      const yaExiste = registros.some(r => r.dni === dni && new Date(r.fecha).toLocaleDateString() === hoy);
+
       if (yaExiste) {
-        alert("Este socio ya fue registrado hoy.");
+        alert("⚠️ Ya se registró este DNI hoy.");
         return;
       }
-      const registro = {
-        nombre: nombre,
-        dni: dni,
-        fecha: new Date().toLocaleString(),
-        tipo: "manual"
-      };
-      registros.push(registro);
+
+      registros.push({ nombre, dni, fecha, tipo: "manual" });
       guardarRegistros();
+      actualizarRegistros();
+      mostrarDebug();
     }
 
     function borrarRegistros() {
-      if (confirm("¿Seguro que querés borrar todos los registros?")) {
-        localStorage.removeItem("registros");
+      if (confirm("¿Estás seguro de borrar todos los registros?")) {
+        localStorage.removeItem('registros');
         registros = [];
         actualizarRegistros();
+        mostrarDebug();
       }
     }
 
-    document.addEventListener("DOMContentLoaded", () => {
+    function mostrarDebug() {
+      document.getElementById('debugBox').textContent = JSON.stringify(registros, null, 2);
+    }
+
+    // Cargar al iniciar
+    document.addEventListener('DOMContentLoaded', () => {
+      cargarRegistros();
       actualizarRegistros();
+      mostrarDebug();
     });
   </script>
 </body>
