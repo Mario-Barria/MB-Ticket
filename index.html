@@ -314,7 +314,9 @@
 
         <div class="panel">
             <h3 class="panel-title">Registros de Hoy</h3>
-            <div id="registros-list">
+            <h3>📦 Vista rápida de localStorage.registros</h3>
+<pre id="vistaRegistrosDebug" style="background:#f0f0f0;padding:10px;border:1px solid #ccc;max-height:200px;overflow:auto;">Cargando registros...</pre>
+		<div id="registros-list">
                 <p>No hay registros aún.</p>
             </div>
             <button id="exportBtn">Generar Informe</button>
@@ -793,6 +795,21 @@ function cargarRegistros() {
         window.addEventListener('beforeunload', () => {
             guardarRegistros();
         });
+function mostrarVistaRegistrosDebug() {
+  const data = localStorage.getItem('registros');
+  let contenido = 'Sin registros encontrados.';
+  try {
+    const registros = data ? JSON.parse(data) : [];
+    contenido = JSON.stringify(registros, null, 2);
+  } catch (e) {
+    contenido = '⚠️ Error al leer registros.';
+  }
+  const vista = document.getElementById("vistaRegistrosDebug");
+  if (vista) vista.textContent = contenido;
+}
+
+// Ejecutar cada 3 segundos
+setInterval(mostrarVistaRegistrosDebug, 3000);
     </script>
 </body>
 </html>
