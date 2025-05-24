@@ -1,691 +1,67 @@
+
 <!DOCTYPE html>
 <html lang="es">
 <head>
-    <link rel="manifest" href="manifest.json">
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Control de Acceso - Estadio</title>
-    <script src="https://unpkg.com/html5-qrcode@2.3.4/html5-qrcode.min.js"></script>
-    <style>
-        :root {
-            --primary: #2c3e50;
-            --secondary: #2980b9;
-            --success: #27ae60;
-            --danger: #e74c3c;
-            --info: #3498db;
-            --light: #ecf0f1;
-            --dark: #2c3e50;
-        }
-        
-        body {
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            margin: 0;
-            padding: 20px;
-            background-color: #f5f7fa;
-            color: var(--dark);
-        }
-        
-        .container {
-            max-width: 1000px;
-            margin: 0 auto;
-        }
-        
-        header {
-            text-align: center;
-            margin-bottom: 20px;
-        }
-        
-        .logo {
-            height: 80px;
-            margin-bottom: 10px;
-        }
-        
-        .panel {
-            background: white;
-            padding: 15px;
-            border-radius: 8px;
-            margin-bottom: 20px;
-            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
-        }
-        
-        .panel-title {
-            margin-top: 0;
-            color: var(--primary);
-            border-bottom: 1px solid #eee;
-            padding-bottom: 10px;
-        }
-        
-        .file-upload {
-            margin-bottom: 15px;
-        }
-        
-        .file-upload label {
-            display: inline-block;
-            background: var(--secondary);
-            color: white;
-            padding: 10px 15px;
-            border-radius: 5px;
-            cursor: pointer;
-            margin-right: 10px;
-        }
-        
-        .file-upload input {
-            display: none;
-        }
-        
-        .file-status {
-            margin-top: 10px;
-            font-weight: bold;
-        }
-        
-        #reader {
-            width: 100%;
-            max-width: 500px;
-            margin: 20px auto;
-            background: white;
-            padding: 15px;
-            border-radius: 8px;
-            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
-        }
-        
-        #result {
-            display: none;
-            margin: 20px auto;
-            padding: 20px;
-            border-radius: 8px;
-            text-align: center;
-            max-width: 500px;
-        }
-        
-        .success {
-            background-color: #d4edda;
-            color: #155724;
-            border: 1px solid #c3e6cb;
-        }
-        
-        .error {
-            background-color: #f8d7da;
-            color: #721c24;
-            border: 1px solid #f5c6cb;
-        }
-        
-        .info {
-            background-color: #d1ecf1;
-            color: #0c5460;
-            border: 1px solid #bee5eb;
-        }
-        
-        .icon {
-            font-size: 40px;
-            margin-bottom: 10px;
-        }
-        
-        button {
-            padding: 12px 20px;
-            color: white !important;
-            border: none;
-            border-radius: 5px;
-            cursor: pointer;
-            margin: 10px auto;
-            font-weight: bold;
-            width: 100%;
-            max-width: 300px;
-            display: block;
-            transition: all 0.3s;
-        }
-        
-        button:hover {
-            opacity: 0.9;
-            transform: translateY(-2px);
-        }
-        
-        #exportBtn {
-            background: var(--secondary);
-        }
-        
-        #clearBtn {
-            background: var(--danger);
-        }
-        
-        #manualRegisterBtn {
-            background: var(--success);
-        }
-        
-        #importWebBtn {
-            background: var(--info);
-        }
-        
-        .search-box {
-            margin-bottom: 15px;
-        }
-        
-        .search-results {
-            position: relative;
-        }
-        
-        #searchInput {
-            width: 100%;
-            padding: 10px;
-            margin-bottom: 10px;
-            border: 1px solid #ddd;
-            border-radius: 5px;
-        }
-        
-        #resultsList {
-            position: absolute;
-            width: 100%;
-            max-height: 200px;
-            overflow-y: auto;
-            background: white;
-            border: 1px solid #ddd;
-            border-radius: 5px;
-            z-index: 1000;
-            display: none;
-            box-shadow: 0 4px 8px rgba(0,0,0,0.1);
-        }
-        
-        .result-item {
-            padding: 10px;
-            cursor: pointer;
-            border-bottom: 1px solid #eee;
-        }
-        
-        .result-item:hover {
-            background-color: #f5f5f5;
-        }
-        
-        .result-item strong {
-            color: var(--secondary);
-        }
-        
-        #registros-list {
-            max-height: 300px;
-            overflow-y: auto;
-        }
-        
-        .registro-item {
-            padding: 10px 0;
-            border-bottom: 1px solid #eee;
-        }
-        
-        .registro-item:last-child {
-            border-bottom: none;
-        }
-        
-        .tabs {
-            display: flex;
-            margin-bottom: 20px;
-            border-bottom: 1px solid #ddd;
-        }
-        
-        .tab {
-            padding: 10px 20px;
-            cursor: pointer;
-            background: #f1f1f1;
-            margin-right: 5px;
-            border-radius: 5px 5px 0 0;
-        }
-        
-        .tab.active {
-            background: var(--secondary);
-            color: white;
-        }
-        
-        .tab-content {
-            display: none;
-        }
-        
-        .tab-content.active {
-            display: block;
-        }
-        
-        @media (max-width: 768px) {
-            .container {
-                padding: 10px;
-            }
-            
-            .panel {
-                padding: 10px;
-            }
-            
-            button {
-                padding: 10px 15px;
-            }
-        }
-    </style>
+  <meta charset="UTF-8">
+  <title>MB Ticket - Escaneo</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <style>
+    body { font-family: Arial, sans-serif; margin: 0; padding: 20px; background: #f5f5f5; }
+    .container { max-width: 800px; margin: auto; background: white; padding: 20px; border-radius: 8px; box-shadow: 0 0 10px rgba(0,0,0,0.1); }
+    h2, h3 { color: #333; }
+    table { width: 100%; border-collapse: collapse; margin-top: 10px; }
+    th, td { padding: 8px; border-bottom: 1px solid #ccc; text-align: left; }
+    th { background: #eee; }
+    #vistaRegistrosDebug { background: #eef; padding: 10px; margin-top: 20px; font-size: 14px; }
+    button { margin-top: 10px; padding: 8px 16px; }
+  </style>
 </head>
 <body>
-    <div class="container">
-        <header>
-            <img src="Logo MB-ticket.png" alt="Logo" class="logo">
-            <h1>Control de Acceso - Estadio</h1>
-        </header>
+  <div class="container">
+    <h2>Escaneo de Entradas - MB Ticket</h2>
+    <button onclick="simularEscaneo()">Simular escaneo</button>
+    <button onclick="registrarManual()">Registrar manual</button>
+    <button onclick="borrarRegistros()">Borrar registros</button>
 
-        <div class="tabs">
-            <div class="tab active" data-tab="ingreso">Registro de Ingresos</div>
-            <div class="tab" data-tab="importar">Importar Entradas Web</div>
-        </div>
+    <h3 class="panel-title">Registros de Hoy</h3>
+    <table id="tablaRegistros">
+      <thead>
+        <tr>
+          <th>Nombre</th>
+          <th>DNI</th>
+          <th>Hora</th>
+        </tr>
+      </thead>
+      <tbody></tbody>
+    </table>
 
-        <!-- Pestaña de Ingreso -->
-        <div id="ingreso" class="tab-content active">
-            <div class="panel">
-                <h3 class="panel-title">Carga de Socios</h3>
-                <div class="file-upload">
-                    <label for="csvFile">Seleccionar listado de socios (CSV)</label>
-                    <input type="file" id="csvFile" accept=".csv">
-                    <p id="csvStatus" class="file-status">Esperando archivo CSV...</p>
-                </div>
-            </div>
+    <pre id="vistaRegistrosDebug">Vista rápida de localStorage.registros</pre>
+  </div>
 
-            <div class="panel">
-                <h3 class="panel-title">Búsqueda Manual</h3>
-                <div class="search-box">
-                    <div class="search-results">
-                        <input type="text" id="searchInput" placeholder="Buscar por DNI o nombre (mínimo 3 caracteres)">
-                        <div id="resultsList"></div>
-                    </div>
-                    <button id="manualRegisterBtn" disabled>Registrar Ingreso Manual</button>
-                </div>
-            </div>
+  <script>
+    let registros = JSON.parse(localStorage.getItem("registros")) || [];
 
-            <div class="panel">
-                <h3 class="panel-title">Escaneo de Carnets</h3>
-                <div id="reader"></div>
-                <div id="result">
-                    <div id="icon" class="icon"></div>
-                    <div id="message"></div>
-                </div>
-            </div>
-        </div>
+    function guardarRegistros() {
+      localStorage.setItem("registros", JSON.stringify(registros));
+      actualizarRegistros();
+    }
 
-        <!-- Pestaña de Importación -->
-        <div id="importar" class="tab-content">
-            <div class="panel">
-                <h3 class="panel-title">Importar Entradas Web</h3>
-                <div class="file-upload">
-                    <label for="webSalesFile">Seleccionar archivo de ventas web (Excel/CSV)</label>
-                    <input type="file" id="webSalesFile" accept=".csv,.xlsx,.xls">
-                    <p id="webSalesStatus" class="file-status">Esperando archivo de ventas web...</p>
-                </div>
-                <button id="importWebBtn" disabled>Importar Entradas</button>
-                <p id="importSummary" style="margin-top: 15px;"></p>
-            </div>
-        </div>
+    function cargarRegistros() {
+      registros = JSON.parse(localStorage.getItem("registros")) || [];
+    }
 
-        <div class="panel">
-            <h3 class="panel-title">Registros de Hoy</h3>
-<table id="tablaRegistros" style="width:100%;border-collapse: collapse; margin-top: 10px;">
-  <thead>
-    <tr style="background:#f0f0f0;">
-      <th style="text-align:left; padding: 8px; border-bottom: 1px solid #ccc;">Nombre</th>
-      <th style="text-align:left; padding: 8px; border-bottom: 1px solid #ccc;">DNI</th>
-      <th style="text-align:left; padding: 8px; border-bottom: 1px solid #ccc;">Hora</th>
-    </tr>
-  </thead>
-  <tbody>
-  </tbody>
-</table>
-            <h3>📦 Vista rápida de localStorage.registros</h3>
-<pre id="vistaRegistrosDebug" style="background:#f0f0f0;padding:10px;border:1px solid #ccc;max-height:200px;overflow:auto;">Cargando registros...</pre>
-		
-            <button id="exportBtn">Generar Informe</button>
-            <button id="clearBtn">Limpiar Registros</button>
-        </div>
-    </div>
+    function actualizarRegistros() {
+      cargarRegistros();
+      const hoy = new Date().toISOString().split('T')[0];
+      const tbody = document.querySelector("#tablaRegistros tbody");
+      tbody.innerHTML = "";
 
-    <!-- Sonidos locales para evitar problemas en móviles -->
-    <audio id="successSound" src="success.mp3" preload="auto"></audio>
-    <audio id="errorSound" src="error.mp3" preload="auto"></audio>
-
-    <!-- Biblioteca para leer Excel -->
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
-
-    <script>
-        // Variables globales
-        let socios = [];
-        let registros = JSON.parse(localStorage.getItem('registros')) || [];
-        let entradasWeb = JSON.parse(localStorage.getItem('entradasWeb')) || [];
-        let scanner;
-        let selectedSocio = null;
-        let ultimoEscaneo = null;
-
-        // Elementos del DOM
-        const csvFile = document.getElementById('csvFile');
-        const csvStatus = document.getElementById('csvStatus');
-        const webSalesFile = document.getElementById('webSalesFile');
-        const webSalesStatus = document.getElementById('webSalesStatus');
-        const importWebBtn = document.getElementById('importWebBtn');
-        const importSummary = document.getElementById('importSummary');
-        const searchInput = document.getElementById('searchInput');
-        const resultsList = document.getElementById('resultsList');
-        const manualRegisterBtn = document.getElementById('manualRegisterBtn');
-        const exportBtn = document.getElementById('exportBtn');
-        const clearBtn = document.getElementById('clearBtn');
-        const registrosList = document.getElementById('registros-list');
-        const tabs = document.querySelectorAll('.tab');
-        const tabContents = document.querySelectorAll('.tab-content');
-
-        // Eventos
-        csvFile.addEventListener('change', cargarSociosCSV);
-        webSalesFile.addEventListener('change', cargarEntradasWeb);
-        importWebBtn.addEventListener('click', importarEntradasWeb);
-        searchInput.addEventListener('input', buscarSocios);
-        manualRegisterBtn.addEventListener('click', registrarManual);
-        exportBtn.addEventListener('click', exportarRegistros);
-        clearBtn.addEventListener('click', limpiarRegistros);
-
-        // Tabs
-        tabs.forEach(tab => {
-            tab.addEventListener('click', () => {
-                tabs.forEach(t => t.classList.remove('active'));
-                tabContents.forEach(c => c.classList.remove('active'));
-                
-                tab.classList.add('active');
-                document.getElementById(tab.dataset.tab).classList.add('active');
-            });
-        });
-
-        // Cargar socios desde CSV
-        function cargarSociosCSV(event) {
-            const file = event.target.files[0];
-            if (!file) return;
-
-            const reader = new FileReader();
-            reader.onload = function(e) {
-                try {
-                    const content = e.target.result;
-                    const lines = content.split(/\r?\n/).filter(line => line.trim() !== '');
-                    
-                    socios = lines.map(line => {
-                        const [nombre, apellido, dni] = line.split(';');
-                        return {
-                            nombre: `${nombre.trim()} ${apellido.trim()}`,
-                            dni: dni.trim()
-                        };
-                    });
-
-                    csvStatus.textContent = `✅ Socios cargados: ${socios.length}`;
-                    csvStatus.style.color = "green";
-                    exportBtn.disabled = false;
-                    iniciarEscaneo();
-
-                } catch (error) {
-                    csvStatus.textContent = "❌ Error: El archivo debe tener formato: Nombre;Apellido;DNI";
-                    csvStatus.style.color = "red";
-                    console.error("Error al procesar CSV:", error);
-                }
-            };
-            
-            reader.onerror = () => {
-                csvStatus.textContent = "❌ Error al leer el archivo";
-                csvStatus.style.color = "red";
-            };
-            
-            reader.readAsText(file);
-        }
-
-        // Cargar entradas web desde Excel/CSV
-        function cargarEntradasWeb(event) {
-            const file = event.target.files[0];
-            if (!file) return;
-
-            const reader = new FileReader();
-            reader.onload = function(e) {
-                try {
-                    const data = new Uint8Array(e.target.result);
-                    const workbook = XLSX.read(data, { type: 'array' });
-                    const firstSheet = workbook.Sheets[workbook.SheetNames[0]];
-                    const jsonData = XLSX.utils.sheet_to_json(firstSheet);
-                    
-                    // Suponemos que el Excel tiene columna "DNI"
-                    const dnis = jsonData.map(item => item.DNI?.toString().trim()).filter(Boolean);
-                    
-                    webSalesStatus.textContent = `✅ Entradas web cargadas: ${dnis.length}`;
-                    webSalesStatus.style.color = "green";
-                    importWebBtn.disabled = false;
-                    
-                    // Guardar temporalmente para importación
-                    entradasWeb = dnis;
-
-                } catch (error) {
-                    webSalesStatus.textContent = "❌ Error: El archivo debe tener columna 'DNI'";
-                    webSalesStatus.style.color = "red";
-                    console.error("Error al procesar archivo:", error);
-                }
-            };
-            
-            reader.onerror = () => {
-                webSalesStatus.textContent = "❌ Error al leer el archivo";
-                webSalesStatus.style.color = "red";
-            };
-            
-            reader.readAsArrayBuffer(file);
-        }
-
-        // Importar entradas web al sistema
-        function importarEntradasWeb() {
-            if (entradasWeb.length === 0) {
-                mostrarResultado('error', '❌ Error', 'No hay entradas web para importar');
-                playErrorSound();
-                return;
-            }
-
-            const hoy = new Date().toLocaleDateString();
-            let nuevosRegistros = 0;
-            let duplicados = 0;
-
-            entradasWeb.forEach(dni => {
-                // Verificar si ya está registrado hoy
-                const yaRegistrado = registros.some(r => 
-                    r.dni === dni && 
-                    new Date(r.fecha).toLocaleDateString() === hoy
-                );
-
-                if (!yaRegistrado) {
-                    registros.push({
-                        dni: dni,
-                        nombre: "Entrada Web",
-                        fecha: new Date().toLocaleString(),
-                        tipo: "web"
-                    });
-                    nuevosRegistros++;
-                } else {
-                    duplicados++;
-                }
-            });
-
-            guardarRegistros();
-            actualizarRegistros();
-            
-            importSummary.innerHTML = `
-                <strong>Resumen de importación:</strong><br>
-                ✅ Nuevos registros: ${nuevosRegistros}<br>
-                ⚠️ Duplicados: ${duplicados}<br>
-                📅 Total registros hoy: ${registros.filter(r => esHoy(r.fecha)).length}
-            `;
-            
-            mostrarResultado('success', '✅ Importación completada', `
-                Se importaron ${nuevosRegistros} entradas web<br>
-                ${duplicados} ya estaban registradas
-            `);
-            playSuccessSound();
-        }
-
-        // Buscar socios (autocompletado)
-        function buscarSocios() {
-            const query = searchInput.value.trim().toLowerCase();
-            resultsList.innerHTML = '';
-            selectedSocio = null;
-            manualRegisterBtn.disabled = true;
-
-            if (query.length < 3) {
-                resultsList.style.display = 'none';
-                return;
-            }
-
-            const resultados = socios.filter(socio => 
-                socio.dni.includes(query) || 
-                socio.nombre.toLowerCase().includes(query)
-            );
-
-            if (resultados.length > 0) {
-                resultsList.innerHTML = resultados.map(socio => `
-                    <div class="result-item" data-dni="${socio.dni}">
-                        <strong>${socio.nombre}</strong><br>
-                        DNI: ${socio.dni}
-                    </div>
-                `).join('');
-                resultsList.style.display = 'block';
-                
-                document.querySelectorAll('.result-item').forEach(item => {
-                    item.addEventListener('click', function() {
-                        const dni = this.getAttribute('data-dni');
-                        selectedSocio = socios.find(s => s.dni === dni);
-                        searchInput.value = selectedSocio.nombre;
-                        resultsList.style.display = 'none';
-                        manualRegisterBtn.disabled = false;
-                    });
-                });
-            } else {
-                resultsList.innerHTML = '<div class="result-item">No se encontraron socios</div>';
-                resultsList.style.display = 'block';
-            }
-        }
-
-        // Iniciar escáner
-        function iniciarEscaneo() {
-            if (window.scanner && window.scanner.isScanning) return;
-            
-            window.scanner = new Html5Qrcode("reader");
-            window.scanner.start(
-                { facingMode: "environment" },
-                { fps: 10, qrbox: 250 },
-                (decodedText) => {
-                    procesarQR(decodedText);
-                },
-                (error) => {
-                    // Ignorar errores comunes (sin detener escáner)
-                    if (error !== "NotFoundException") {
-                        console.log("Error escáner:", error);
-                    }
-                }
-            ).then(() => {
-                console.log("Escáner activo");
-            }).catch(err => {
-                console.error("Error al iniciar:", err);
-            });
-        }
-
-        // Procesar código QR escaneado
-        function procesarQR(qrContent) {
-  const ahora = Date.now();
-  if (window.ultimoEscaneo && (ahora - window.ultimoEscaneo < 1500)) return;
-  window.ultimoEscaneo = ahora;
-
-  const dni = qrContent.split('=')[1] || qrContent;
-  const socio = socios.find(s => s.dni === dni.trim());
-
-  if (!socio) {
-    mostrarResultado('error', '❌ No registrado', `DNI: ${dni}`);
-    playErrorSound();
-    return;
-  }
-
-  cargarRegistros(); // ✅ importante para que no se pierdan los registros existentes
-
-  const hoy = new Date().toLocaleDateString();
-  const yaRegistrado = registros.some(r =>
-    r.dni === socio.dni &&
-    new Date(r.fecha).toLocaleDateString() === hoy
-  );
-
-  if (yaRegistrado) {
-    mostrarResultado('error', '❌ Ya ingresó hoy', `
-        ${socio.nombre}<br>
-        DNI: ${socio.dni}
-    `);
-    playErrorSound();
-    return;
-  }
-  cargarRegistros(); // ✅ asegura que carga los registros actuales antes de agregar
-  registros.push({
-    dni: socio.dni,
-    nombre: socio.nombre,
-    fecha: new Date().toLocaleString(),
-    tipo: "escaneo"
-  });
-
-  guardarRegistros();
-  actualizarRegistros();
-
-  mostrarResultado('success', '✅ Registrado', `
-      ${socio.nombre}<br>
-      DNI: ${socio.dni}
-  `);
-  playSuccessSound();
-}
-
-        // Registrar manualmente
-        function registrarManual() {
-  cargarRegistros();
-
-  if (!selectedSocio) {
-    mostrarResultado('error', '❌ Error', 'Seleccione un socio de la lista');
-    playErrorSound();
-    return;
-  }
-
-  const hoy = new Date().toLocaleDateString();
-  const registroExistente = registros.find(r =>
-    r.dni === selectedSocio.dni &&
-    new Date(r.fecha).toLocaleDateString() === hoy
-  );
-
-  if (registroExistente) {
-    mostrarResultado('error', '❌ Ya ingresó hoy', `
-        ${selectedSocio.nombre}<br>
-        DNI: ${selectedSocio.dni}<br>
-        Hora: ${registroExistente.fecha.split(',')[1].trim()}
-    `);
-    playErrorSound();
-    return;
-  }
-
-  const registro = {
-    dni: selectedSocio.dni,
-    nombre: selectedSocio.nombre,
-    fecha: new Date().toLocaleString(),
-    tipo: "manual"
-  };
-
-  cargarRegistros(); // ✅ asegura que carga los registros actuales antes de agregar
-  registros.push(registro);
-  guardarRegistros();
-  actualizarRegistros();
-
-  mostrarResultado('success', '✅ Registrado', selectedSocio.nombre);
-  playSuccessSound();
-
-  if (typeof searchInput !== 'undefined') searchInput.value = '';
-  if (typeof resultsList !== 'undefined') resultsList.style.display = 'none';
-  selectedSocio = null;
-  if (typeof manualRegisterBtn !== 'undefined') manualRegisterBtn.disabled = true;
-}
-
-        // Actualizar registros
-        function actualizarRegistros() {
-    cargarRegistros(); // 🔄 Siempre actualizamos desde localStorage
-    const hoy = new Date().toISOString().split('T')[0]; // 👉 "2025-05-24"
-    const tbody = document.querySelector("#tablaRegistros tbody");
-    tbody.innerHTML = "";
-
-    const registrosHoy = registros.filter(r => {
+      const registrosHoy = registros.filter(r => {
         const fecha = new Date(r.fecha);
-        const fechaRegistro = fecha.toISOString().split('T')[0];
-        return fechaRegistro === hoy;
-    });
+        return fecha.toISOString().split('T')[0] === hoy;
+      });
 
-    if (registrosHoy.length === 0) {
+      if (registrosHoy.length === 0) {
         const fila = document.createElement("tr");
         const celda = document.createElement("td");
         celda.colSpan = 3;
@@ -694,136 +70,71 @@
         fila.appendChild(celda);
         tbody.appendChild(fila);
         return;
+      }
+
+      registrosHoy.forEach(r => {
+        const fila = document.createElement("tr");
+        fila.innerHTML = `<td>${r.nombre}</td><td>${r.dni}</td><td>${r.fecha.split(',')[1]?.trim()}</td>`;
+        tbody.appendChild(fila);
+      });
+
+      document.getElementById("vistaRegistrosDebug").textContent = JSON.stringify(registros, null, 2);
     }
 
-    registrosHoy.forEach(r => {
-        const fila = document.createElement("tr");
+    function procesarQR(nombre, dni) {
+      cargarRegistros();
+      const hoy = new Date().toISOString().split('T')[0];
+      const yaExiste = registros.find(r => r.dni === dni && new Date(r.fecha).toISOString().split('T')[0] === hoy);
+      if (yaExiste) {
+        alert("Este código ya fue escaneado hoy.");
+        return;
+      }
 
-        const celdaNombre = document.createElement("td");
-        celdaNombre.textContent = r.nombre;
-        celdaNombre.style.padding = "8px";
+      const registro = {
+        nombre: nombre,
+        dni: dni,
+        fecha: new Date().toLocaleString(),
+        tipo: "escaneo"
+      };
+      registros.push(registro);
+      guardarRegistros();
+    }
 
-        const celdaDni = document.createElement("td");
-        celdaDni.textContent = r.dni;
-        celdaDni.style.padding = "8px";
+    function simularEscaneo() {
+      procesarQR("Escaneo Test", "99999999");
+    }
 
-        const hora = r.fecha.split(',')[1]?.trim() || new Date(r.fecha).toLocaleTimeString();
-        const celdaHora = document.createElement("td");
-        celdaHora.textContent = hora;
-        celdaHora.style.padding = "8px";
+    function registrarManual() {
+      cargarRegistros();
+      const nombre = "Manual Test";
+      const dni = "88888888";
+      const hoy = new Date().toISOString().split('T')[0];
+      const yaExiste = registros.find(r => r.dni === dni && new Date(r.fecha).toISOString().split('T')[0] === hoy);
+      if (yaExiste) {
+        alert("Este socio ya fue registrado hoy.");
+        return;
+      }
+      const registro = {
+        nombre: nombre,
+        dni: dni,
+        fecha: new Date().toLocaleString(),
+        tipo: "manual"
+      };
+      registros.push(registro);
+      guardarRegistros();
+    }
 
-        fila.appendChild(celdaNombre);
-        fila.appendChild(celdaDni);
-        fila.appendChild(celdaHora);
+    function borrarRegistros() {
+      if (confirm("¿Seguro que querés borrar todos los registros?")) {
+        localStorage.removeItem("registros");
+        registros = [];
+        actualizarRegistros();
+      }
+    }
 
-        tbody.appendChild(fila);
+    document.addEventListener("DOMContentLoaded", () => {
+      actualizarRegistros();
     });
-}
-
-        // Limpiar registros
-        function limpiarRegistros() {
-  if (confirm("¿Estás seguro de que querés borrar todos los registros?")) {
-    localStorage.removeItem('registros');
-    registros = [];
-    actualizarRegistros();
-    mostrarVistaRegistrosDebug(); // ✅ actualiza la vista rápida
-  }
-}
-
-        // Mostrar resultado
-        function mostrarResultado(tipo, icono, mensaje) {
-            const result = document.getElementById('result');
-            result.innerHTML = `
-                <div class="icon">${icono}</div>
-                <div>${mensaje}</div>
-            `;
-            result.className = tipo;
-            result.style.display = 'block';
-            
-            setTimeout(() => {
-                result.style.display = 'none';
-            }, 3000);
-        }
-
-        // Verificar si es hoy
-        function esHoy(fechaStr) {
-            const fechaRegistro = new Date(fechaStr);
-            const hoy = new Date();
-            return fechaRegistro.getDate() === hoy.getDate() && 
-                   fechaRegistro.getMonth() === hoy.getMonth() && 
-                   fechaRegistro.getFullYear() === hoy.getFullYear();
-        }
-function cargarRegistros() {
-  try {
-    const data = localStorage.getItem('registros');
-    registros = data ? JSON.parse(data) : [];
-  } catch (e) {
-    registros = [];
-    console.warn("⚠️ No se pudo cargar registros del almacenamiento local");
-  }
-}
-        
-// Función para guardar registros (optimizada para móviles)
-        function guardarRegistros() {
-  localStorage.setItem('registros', JSON.stringify(registros));
-  mostrarVistaRegistrosDebug(); // ✅ actualiza la vista inmediata
-}
-
-        // Funciones mejoradas para sonido en móviles
-        function playSuccessSound() {
-            const sound = document.getElementById('successSound');
-            sound.volume = 0.5;
-            sound.play().catch(e => {
-                console.log("No se pudo reproducir sonido:", e);
-                // Mostrar notificación visual alternativa
-                mostrarResultado('info', '🔔', 'Registro exitoso');
-            });
-        }
-
-        function playErrorSound() {
-            const sound = document.getElementById('errorSound');
-            sound.volume = 0.5;
-            sound.play().catch(e => console.log("No se pudo reproducir sonido:", e));
-        }
-
-        // Inicialización
-        document.addEventListener('DOMContentLoaded', () => {
-            actualizarRegistros();
-            
-            // Para móviles: asegurar que el sonido pueda reproducirse
-            document.body.addEventListener('click', function() {
-                // Esto ayuda a desbloquear la reproducción de audio en móviles
-                document.getElementById('successSound').play().then(() => {
-                    document.getElementById('successSound').pause();
-                    document.getElementById('successSound').currentTime = 0;
-                }).catch(() => {});
-                
-                document.getElementById('errorSound').play().then(() => {
-                    document.getElementById('errorSound').pause();
-                    document.getElementById('errorSound').currentTime = 0;
-                }).catch(() => {});
-            }, { once: true });
-        });
-
-        // Asegurar que se guarden los registros al cerrar
-        window.addEventListener('beforeunload', () => {
-            guardarRegistros();
-        });
-function mostrarVistaRegistrosDebug() {
-  const data = localStorage.getItem('registros');
-  let contenido = 'Sin registros encontrados.';
-  try {
-    const registros = data ? JSON.parse(data) : [];
-    contenido = JSON.stringify(registros, null, 2);
-  } catch (e) {
-    contenido = '⚠️ Error al leer registros.';
-  }
-  const vista = document.getElementById("vistaRegistrosDebug");
-  if (vista) vista.textContent = contenido;
-}
-
-// Ejecutar cada 3 segundos
-setInterval(mostrarVistaRegistrosDebug, 3000);
-    </script>
+  </script>
 </body>
 </html>
