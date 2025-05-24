@@ -674,47 +674,50 @@
 
         // Actualizar registros
         function actualizarRegistros() {
-  const hoy = new Date().toLocaleDateString();
-  const tbody = document.querySelector("#tablaRegistros tbody");
-  tbody.innerHTML = "";
+    cargarRegistros(); // 🔄 Siempre actualizamos desde localStorage
+    const hoy = new Date().toISOString().split('T')[0]; // 👉 "2025-05-24"
+    const tbody = document.querySelector("#tablaRegistros tbody");
+    tbody.innerHTML = "";
 
-  const registrosHoy = registros.filter(r =>
-    new Date(r.fecha).toLocaleDateString() === hoy
-  );
+    const registrosHoy = registros.filter(r => {
+        const fecha = new Date(r.fecha);
+        const fechaRegistro = fecha.toISOString().split('T')[0];
+        return fechaRegistro === hoy;
+    });
 
-  if (registrosHoy.length === 0) {
-    const fila = document.createElement("tr");
-    const celda = document.createElement("td");
-    celda.colSpan = 3;
-    celda.textContent = "No hay registros aún.";
-    celda.style.textAlign = "center";
-    fila.appendChild(celda);
-    tbody.appendChild(fila);
-    return;
-  }
+    if (registrosHoy.length === 0) {
+        const fila = document.createElement("tr");
+        const celda = document.createElement("td");
+        celda.colSpan = 3;
+        celda.textContent = "No hay registros aún.";
+        celda.style.textAlign = "center";
+        fila.appendChild(celda);
+        tbody.appendChild(fila);
+        return;
+    }
 
-  registrosHoy.forEach(r => {
-    const fila = document.createElement("tr");
+    registrosHoy.forEach(r => {
+        const fila = document.createElement("tr");
 
-    const celdaNombre = document.createElement("td");
-    celdaNombre.textContent = r.nombre;
-    celdaNombre.style.padding = "8px";
+        const celdaNombre = document.createElement("td");
+        celdaNombre.textContent = r.nombre;
+        celdaNombre.style.padding = "8px";
 
-    const celdaDni = document.createElement("td");
-    celdaDni.textContent = r.dni;
-    celdaDni.style.padding = "8px";
+        const celdaDni = document.createElement("td");
+        celdaDni.textContent = r.dni;
+        celdaDni.style.padding = "8px";
 
-    const hora = r.fecha.split(',')[1]?.trim() || r.fecha;
-    const celdaHora = document.createElement("td");
-    celdaHora.textContent = hora;
-    celdaHora.style.padding = "8px";
+        const hora = r.fecha.split(',')[1]?.trim() || new Date(r.fecha).toLocaleTimeString();
+        const celdaHora = document.createElement("td");
+        celdaHora.textContent = hora;
+        celdaHora.style.padding = "8px";
 
-    fila.appendChild(celdaNombre);
-    fila.appendChild(celdaDni);
-    fila.appendChild(celdaHora);
+        fila.appendChild(celdaNombre);
+        fila.appendChild(celdaDni);
+        fila.appendChild(celdaHora);
 
-    tbody.appendChild(fila);
-  });
+        tbody.appendChild(fila);
+    });
 }
 
         // Limpiar registros
