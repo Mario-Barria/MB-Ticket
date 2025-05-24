@@ -325,12 +325,9 @@
   <tbody>
   </tbody>
 </table>
-
             <h3>📦 Vista rápida de localStorage.registros</h3>
 <pre id="vistaRegistrosDebug" style="background:#f0f0f0;padding:10px;border:1px solid #ccc;max-height:200px;overflow:auto;">Cargando registros...</pre>
-		<div id="registros-list">
-                <p>No hay registros aún.</p>
-            </div>
+		
             <button id="exportBtn">Generar Informe</button>
             <button id="clearBtn">Limpiar Registros</button>
         </div>
@@ -677,48 +674,47 @@
 
         // Actualizar registros
         function actualizarRegistros() {
-    cargarRegistros(); // 👈 Trae los registros actualizados del almacenamiento
+  const hoy = new Date().toLocaleDateString();
+  const tbody = document.querySelector("#tablaRegistros tbody");
+  tbody.innerHTML = "";
 
-    const hoy = new Date().toLocaleDateString();
+  const registrosHoy = registros.filter(r =>
+    new Date(r.fecha).toLocaleDateString() === hoy
+  );
 
-    const registrosHoy = registros.filter(r => 
-        new Date(r.fecha).toLocaleDateString() === hoy
-    );
+  if (registrosHoy.length === 0) {
+    const fila = document.createElement("tr");
+    const celda = document.createElement("td");
+    celda.colSpan = 3;
+    celda.textContent = "No hay registros aún.";
+    celda.style.textAlign = "center";
+    fila.appendChild(celda);
+    tbody.appendChild(fila);
+    return;
+  }
 
-    const tabla = document.getElementById("tablaRegistros");
-    if (!tabla) return;
+  registrosHoy.forEach(r => {
+    const fila = document.createElement("tr");
 
-    // Vaciar la tabla
-    tabla.innerHTML = '';
+    const celdaNombre = document.createElement("td");
+    celdaNombre.textContent = r.nombre;
+    celdaNombre.style.padding = "8px";
 
-    if (registrosHoy.length === 0) {
-        const fila = document.createElement('tr');
-        const celda = document.createElement('td');
-        celda.colSpan = 3;
-        celda.textContent = "No hay registros aún.";
-        fila.appendChild(celda);
-        tabla.appendChild(fila);
-        return;
-    }
+    const celdaDni = document.createElement("td");
+    celdaDni.textContent = r.dni;
+    celdaDni.style.padding = "8px";
 
-    // Agregar cada fila
-    registrosHoy.forEach(registro => {
-        const fila = document.createElement('tr');
+    const hora = r.fecha.split(',')[1]?.trim() || r.fecha;
+    const celdaHora = document.createElement("td");
+    celdaHora.textContent = hora;
+    celdaHora.style.padding = "8px";
 
-        const celdaNombre = document.createElement('td');
-        celdaNombre.textContent = registro.nombre;
-        fila.appendChild(celdaNombre);
+    fila.appendChild(celdaNombre);
+    fila.appendChild(celdaDni);
+    fila.appendChild(celdaHora);
 
-        const celdaDNI = document.createElement('td');
-        celdaDNI.textContent = registro.dni;
-        fila.appendChild(celdaDNI);
-
-        const celdaHora = document.createElement('td');
-        celdaHora.textContent = registro.fecha.split(',')[1]?.trim() || '';
-        fila.appendChild(celdaHora);
-
-        tabla.appendChild(fila);
-    });
+    tbody.appendChild(fila);
+  });
 }
 
         // Limpiar registros
