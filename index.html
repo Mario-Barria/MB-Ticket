@@ -665,10 +665,11 @@
 
         // Actualizar registros
         function actualizarRegistros() {
-            const hoy = new Date().toLocaleDateString();
-            const registrosHoy = registros.filter(r => 
-                new Date(r.fecha).toLocaleDateString() === hoy
-            );
+    cargarRegistros(); // ✅ ¡Esto es lo que faltaba!
+    const hoy = new Date().toLocaleDateString();
+    const registrosHoy = registros.filter(r => 
+        new Date(r.fecha).toLocaleDateString() === hoy
+    );
 
             registrosList.innerHTML = registrosHoy.length > 0
                 ? registrosHoy.map(r => `
