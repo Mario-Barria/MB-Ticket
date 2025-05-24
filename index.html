@@ -330,6 +330,26 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 
     <script>
+function esHoyISO(fechaISO) {
+    return fechaISO.slice(0, 10) === new Date().toISOString().slice(0, 10);
+}
+
+function exportarRegistros() {
+    const hoy = new Date().toISOString().slice(0, 10);
+    const registrosHoy = registros.filter(r => r.fecha.slice(0, 10) === hoy);
+
+    let csv = "Fecha,Nombre,DNI,Tipo\n";
+    registrosHoy.forEach(r => {
+        csv += `"\${r.fecha}","\${r.nombre}","\${r.dni}","\${r.tipo}"\n`;
+    });
+
+    const blob = new Blob([csv], { type: 'text/csv' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `registros_\${hoy}.csv`;
+    a.click();
+}
         // Variables globales
         let socios = [];
         let registros = JSON.parse(localStorage.getItem('registros')) || [];
@@ -459,7 +479,7 @@
                 return;
             }
 
-            // const hoy = new Date().toLocaleDateString();
+            const hoy = new Date().toLocaleDateString();
             let nuevosRegistros = 0;
             let duplicados = 0;
 
@@ -467,14 +487,14 @@
                 // Verificar si ya está registrado hoy
                 const yaRegistrado = registros.some(r => 
                     r.dni === dni && 
-                    esHoy(r.fecha)
+                    esHoyISO(r.fecha)
                 );
 
                 if (!yaRegistrado) {
                     registros.push({
                         dni: dni,
                         nombre: "Entrada Web",
-                        fecha: new Date().toLocaleString(),
+                        fecha: new Date().toISOString(),
                         tipo: "web"
                     });
                     nuevosRegistros++;
@@ -581,10 +601,10 @@
                 return;
             }
 
-            // const hoy = new Date().toLocaleDateString();
+            const hoy = new Date().toLocaleDateString();
             const yaRegistrado = registros.some(r => 
                 r.dni === socio.dni && 
-                esHoy(r.fecha)
+                esHoyISO(r.fecha)
             );
 
             if (yaRegistrado) {
@@ -600,7 +620,7 @@
             registros.push({
                 dni: socio.dni,
                 nombre: socio.nombre,
-                fecha: new Date().toLocaleString(),
+                fecha: new Date().toISOString(),
                 tipo: "carnet"
             });
             
@@ -622,10 +642,10 @@
                 return;
             }
 
-            // const hoy = new Date().toLocaleDateString();
+            const hoy = new Date().toLocaleDateString();
             const registroExistente = registros.find(r => 
                 r.dni === selectedSocio.dni && 
-                esHoy(r.fecha)
+                esHoyISO(r.fecha)
             );
 
             if (registroExistente) {
@@ -641,7 +661,7 @@
             const registro = {
                 dni: selectedSocio.dni,
                 nombre: selectedSocio.nombre,
-                fecha: new Date().toLocaleString(),
+                fecha: new Date().toISOString(),
                 tipo: "manual"
             };
             
@@ -661,9 +681,9 @@
 
         // Actualizar registros
         function actualizarRegistros() {
-            // const hoy = new Date().toLocaleDateString();
+            const hoy = new Date().toLocaleDateString();
             const registrosHoy = registros.filter(r => 
-                esHoy(r.fecha)
+                esHoyISO(r.fecha)
             );
 
             registrosList.innerHTML = registrosHoy.length > 0
@@ -679,9 +699,9 @@
 
         // Exportar registros
         function exportarRegistros() {
-            // const hoy = new Date().toLocaleDateString();
+            const hoy = new Date().toLocaleDateString();
             const registrosHoy = registros.filter(r => 
-                esHoy(r.fecha)
+                esHoyISO(r.fecha)
             );
 
             let csv = "Fecha,Nombre,DNI,Tipo\n";
@@ -700,9 +720,9 @@
         // Limpiar registros
         function limpiarRegistros() {
             if (confirm('¿Borrar todos los registros de hoy?')) {
-                // const hoy = new Date().toLocaleDateString();
+                const hoy = new Date().toLocaleDateString();
                 registros = registros.filter(r => 
-                    !esHoy(r.fecha)
+                    new Date(r.fecha).toLocaleDateString() !== hoy
                 );
                 guardarRegistros();
                 actualizarRegistros();
