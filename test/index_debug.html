@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <title>Depuración Registro QR - MB Ticket</title>
+  <style>
+    body { font-family: sans-serif; padding: 20px; background: #f7f7f7; }
+    h2 { color: #003366; }
+    pre { background: #fff; padding: 10px; border: 1px solid #ccc; max-height: 300px; overflow: auto; }
+    button { padding: 8px 12px; margin: 10px 0; }
+  </style>
+</head>
+<body>
+  <h2>🔍 Depuración de Guardado de Registros</h2>
+
+  <button onclick="simularRegistro()">➕ Simular Registro</button>
+  <button onclick="mostrarRegistros()">📋 Mostrar Registros</button>
+  <button onclick="localStorage.clear(); log('🧹 localStorage limpiado')">🧹 Borrar localStorage</button>
+
+  <h3>🗂 Registros guardados:</h3>
+  <pre id="registrosVista">Cargando...</pre>
+
+  <h3>📜 Log del sistema:</h3>
+  <pre id="logVista">Esperando eventos...</pre>
+
+  <script>
+    let registros = JSON.parse(localStorage.getItem('registros')) || [];
+
+    function log(texto) {
+      const hora = new Date().toLocaleTimeString();
+      document.getElementById("logVista").textContent += `[${hora}] ${texto}\\n`;
+    }
+
+    function mostrarRegistros() {
+      registros = JSON.parse(localStorage.getItem('registros')) || [];
+      document.getElementById("registrosVista").textContent = JSON.stringify(registros, null, 2);
+      log("✅ Registros visualizados.");
+    }
+
+    function guardarRegistros() {
+      localStorage.setItem('registros', JSON.stringify(registros));
+      log("💾 Registros guardados en localStorage.");
+    }
+
+    function simularRegistro() {
+      registros = JSON.parse(localStorage.getItem('registros')) || [];
+      const nuevo = {
+        dni: "99999999",
+        nombre: "Test Usuario",
+        fecha: new Date().toLocaleString(),
+        tipo: "debug"
+      };
+      registros.push(nuevo);
+      guardarRegistros();
+      mostrarRegistros();
+      log("✔️ Registro simulado agregado.");
+    }
+
+    window.onload = function() {
+      log("🌐 Página cargada");
+      mostrarRegistros();
+    };
+  </script>
+</body>
+</html>
