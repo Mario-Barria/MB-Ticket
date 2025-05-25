@@ -478,26 +478,29 @@ function exportarRegistros() {
 
     const reader = new FileReader();
     reader.onload = function(e) {
-        const content = e.target.result.trim();
+        const content = e.target.result;
 
+        // Detectar separador y dividir líneas
         const sep = content.includes(';') ? ';' : ',';
-        const lines = content.split(/\r?\n/);
+        const lines = content.trim().split(/\r?\n/);
 
+        if (lines.length <= 1) {
+            mostrarResultado('error', '❌ Archivo vacío', 'No se detectaron registros.');
+            return;
+        }
+
+        // Procesar encabezados (sin comillas, minúsculas, limpios)
         const headers = lines[0].split(sep).map(h =>
-            h.replace(/[^a-zA-Z0-9áéíóúÁÉÍÓÚñÑ: ]/g, '').trim().toLowerCase()
+            h.replace(/["\r\n]/g, '').trim().toLowerCase()
         );
 
-        // Ahora buscamos también "nombre y apellido" y "dni"
-        const idxNombre = headers.findIndex(h =>
-            h.includes("nombre") && h.includes("apellido")
-        );
-        const idxDni = headers.findIndex(h =>
-            h.includes("dni")
-        );
+        // Buscar índice de columnas DNI y Nombre
+        const idxNombre = headers.findIndex(h => h.includes("nombre") && h.includes("apellido"));
+        const idxDni = headers.findIndex(h => h.includes("dni"));
 
         if (idxNombre === -1 || idxDni === -1) {
             mostrarResultado('error', '❌ Encabezados no válidos', `
-                No se encontraron las columnas:<br>
+                No se encontraron columnas esperadas como:<br>
                 - "Nombre y Apellido"<br>
                 - "DNI"
             `);
@@ -507,22 +510,24 @@ function exportarRegistros() {
         let nuevos = 0;
 
         for (let i = 1; i < lines.length; i++) {
-            const campos = lines[i].split(sep);
-            if (!campos[idxNombre] || !campos[idxDni]) continue;
+            const row = lines[i];
+            if (!row) continue;
 
-            const nombre = campos[idxNombre].replace(/"/g, '').trim();
-            const dni = campos[idxDni].replace(/"/g, '').trim().replace(':', '');
+            // Separar con el separador correcto y limpiar comillas
+            const campos = row.split(sep).map(c => c.replace(/"/g, '').trim());
 
-            if (!nombre || !dni) continue;
+            const nombre = campos[idxNombre] || '';
+            const dni = campos[idxDni]?.replace(':', '').trim() || '';
 
-            registros.push({
-                nombre,
-                dni,
-                fecha: new Date().toISOString(),
-                tipo: "web"
-            });
-
-            nuevos++;
+            if (nombre && dni) {
+                registros.push({
+                    nombre,
+                    dni,
+                    fecha: new Date().toISOString(),
+                    tipo: "web"
+                });
+                nuevos++;
+            }
         }
 
         guardarRegistros();
@@ -531,8 +536,9 @@ function exportarRegistros() {
         mostrarResultado('success', '✅ Entradas web cargadas', `${nuevos} registro(s) importado(s).`);
     };
 
-    reader.readAsText(file);
+    reader.readAsText(file, 'UTF-8');
 }
+
 
 
 
