@@ -473,49 +473,44 @@ function exportarRegistros() {
 
         // Importar entradas web al sistema
         function importarEntradasWeb(event) {
-    const archivo = event.target.files[0];
-    if (!archivo) return;
+    const file = event.target.files[0];
+    if (!file) return;
 
-    const lector = new FileReader();
-    lector.onload = function(e) {
-        const contenido = e.target.result;
-        const lineas = contenido.trim().split('\n');
+    const reader = new FileReader();
+    reader.onload = function(e) {
+        const content = e.target.result;
 
-        let nuevas = 0;
-        for (let i = 1; i < lineas.length; i++) {
-            const partes = lineas[i].split(',');
+        const lineas = content.split(/\r?\n/);
+        const separador = lineas[0].includes(';') ? ';' : ','; // Auto-detectar
 
-            if (partes.length < 3) continue;
+        let nuevosRegistros = 0;
 
-            const fechaStr = partes[0].trim();
-            const nombre = partes[1].trim();
-            const dni = partes[2].trim();
+        lineas.forEach((linea, index) => {
+            if (index === 0) return; // Saltar encabezado
+            const partes = linea.split(separador);
+            if (partes.length >= 2) {
+                const nombre = partes.length === 4 ? partes[1].replace(/"/g, '').trim() : partes[0].replace(/"/g, '').trim();
+                const dni = partes.length === 4 ? partes[2].replace(/"/g, '').trim() : partes[1].replace(/"/g, '').trim();
 
-            // Verificamos si ya existe
-            const yaExiste = registros.some(r =>
-                r.dni === dni &&
-                r.fecha.slice(0, 10) === new Date(fechaStr).toISOString().slice(0, 10)
-            );
-
-            if (!yaExiste) {
-                const registro = {
-                    fecha: new Date(fechaStr).toISOString(),
-                    nombre: nombre,
-                    dni: dni,
-                    tipo: "web"
-                };
-                registros.push(registro);
-                nuevas++;
+                if (nombre && dni) {
+                    registros.push({
+                        nombre,
+                        dni,
+                        fecha: new Date().toISOString(),
+                        tipo: "web"
+                    });
+                    nuevosRegistros++;
+                }
             }
-        }
+        });
 
         guardarRegistros();
         actualizarRegistros();
-        alert(`✅ Se importaron ${nuevas} registros desde archivo web.`);
-        event.target.value = ''; // Limpia el input
+        mostrarResultado('success', '✅ Entradas web cargadas', `${nuevosRegistros} registro(s) importado(s).`);
+        console.log(`✅ Importados: ${nuevosRegistros}`);
     };
 
-    lector.readAsText(archivo);
+    reader.readAsText(file);
 }
 
         // Buscar socios (autocompletado)
