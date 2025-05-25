@@ -479,34 +479,32 @@ function exportarRegistros() {
     const reader = new FileReader();
     reader.onload = function(e) {
         const content = e.target.result;
-
-        const lineas = content.split(/\r?\n/);
-        if (lineas.length <= 1) {
+        const lines = content.trim().split(/\r?\n/);
+        if (lines.length <= 1) {
             mostrarResultado('error', '❌ Archivo vacío o malformado', 'No se detectaron registros.');
             return;
         }
 
         let nuevosRegistros = 0;
 
-        for (let i = 1; i < lineas.length; i++) {
-            const linea = lineas[i].trim();
-            if (!linea) continue;
+        for (let i = 1; i < lines.length; i++) {
+            const line = lines[i].trim();
+            if (!line) continue;
 
-            const partes = linea.split(',');
+            // Usa una expresión regular para extraer los campos entre comillas
+            const match = line.match(/"([^"]*)","([^"]*)","([^"]*)","([^"]*)"/);
+            if (match) {
+                const nombre = match[2];
+                const dni = match[3];
 
-            if (partes.length >= 4) {
-                const nombre = partes[1].replace(/"/g, '').trim();
-                const dni = partes[2].replace(/"/g, '').trim();
+                registros.push({
+                    nombre,
+                    dni,
+                    fecha: new Date().toISOString(),
+                    tipo: "web"
+                });
 
-                if (nombre && dni) {
-                    registros.push({
-                        nombre,
-                        dni,
-                        fecha: new Date().toISOString(),
-                        tipo: "web"
-                    });
-                    nuevosRegistros++;
-                }
+                nuevosRegistros++;
             }
         }
 
