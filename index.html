@@ -480,17 +480,18 @@ function exportarRegistros() {
     reader.onload = function(e) {
         const content = e.target.result.trim();
 
-        // Detectar separador automático
+        // Detectar separador automáticamente (; o ,)
         const sep = content.includes(';') ? ';' : ',';
         const lines = content.split(/\r?\n/);
 
         // Limpiar encabezados
         const headers = lines[0].split(sep).map(h =>
-            h.replace(/(^"|"$)/g, '').trim().toLowerCase()
+            h.replace(/[^a-zA-Z0-9 ]/g, '').trim().toLowerCase()
         );
 
-        const idxNombre = headers.findIndex(h => h.includes("nombre y apellido"));
-        const idxDni = headers.findIndex(h => h.startsWith("dni"));
+        // Buscar columnas
+        const idxNombre = headers.findIndex(h => h.includes("nombre") && h.includes("apellido"));
+        const idxDni = headers.findIndex(h => h.includes("dni"));
 
         if (idxNombre === -1 || idxDni === -1) {
             mostrarResultado('error', '❌ Encabezados no válidos', 'No se encontraron las columnas "Nombre y Apellido" o "DNI".');
@@ -527,6 +528,7 @@ function exportarRegistros() {
 
     reader.readAsText(file);
 }
+
 
 
         // Buscar socios (autocompletado)
