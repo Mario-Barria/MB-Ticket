@@ -479,18 +479,21 @@ function exportarRegistros() {
     const reader = new FileReader();
     reader.onload = function(e) {
         const content = e.target.result.trim();
-        
+
         // Detectar separador automático
         const sep = content.includes(';') ? ';' : ',';
         const lines = content.split(/\r?\n/);
 
-        // Leer encabezados y buscar columnas
-        const headers = lines[0].split(sep).map(h => h.trim().replace(/(^"|"$)/g, ''));
-        const idxNombre = headers.findIndex(h => h.toLowerCase().includes("nombre y apellido"));
-        const idxDni = headers.findIndex(h => h.toLowerCase().startsWith("dni"));
+        // Limpiar encabezados
+        const headers = lines[0].split(sep).map(h =>
+            h.replace(/(^"|"$)/g, '').trim().toLowerCase()
+        );
+
+        const idxNombre = headers.findIndex(h => h.includes("nombre y apellido"));
+        const idxDni = headers.findIndex(h => h.startsWith("dni"));
 
         if (idxNombre === -1 || idxDni === -1) {
-            mostrarResultado('error', '❌ Encabezados no válidos', 'No se encontraron columnas "Nombre Y Apellido" o "DNI".');
+            mostrarResultado('error', '❌ Encabezados no válidos', 'No se encontraron las columnas "Nombre y Apellido" o "DNI".');
             return;
         }
 
@@ -498,6 +501,7 @@ function exportarRegistros() {
 
         for (let i = 1; i < lines.length; i++) {
             const campos = lines[i].split(sep);
+
             if (!campos[idxNombre] || !campos[idxDni]) continue;
 
             const nombre = campos[idxNombre].replace(/"/g, '').trim();
@@ -511,6 +515,7 @@ function exportarRegistros() {
                 fecha: new Date().toISOString(),
                 tipo: "web"
             });
+
             nuevos++;
         }
 
@@ -518,11 +523,11 @@ function exportarRegistros() {
         actualizarRegistros();
 
         mostrarResultado('success', '✅ Entradas web cargadas', `${nuevos} registro(s) importado(s).`);
-        console.log(`✅ Importados: ${nuevos}`);
     };
 
     reader.readAsText(file);
 }
+
 
         // Buscar socios (autocompletado)
         function buscarSocios() {
