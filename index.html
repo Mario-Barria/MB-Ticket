@@ -472,53 +472,51 @@ function exportarRegistros() {
         }
 
         // Importar entradas web al sistema
-        function importarEntradasWeb() {
-            if (entradasWeb.length === 0) {
-                mostrarResultado('error', '❌ Error', 'No hay entradas web para importar');
-                playErrorSound();
-                return;
+        function importarEntradasWeb(event) {
+    const archivo = event.target.files[0];
+    if (!archivo) return;
+
+    const lector = new FileReader();
+    lector.onload = function(e) {
+        const contenido = e.target.result;
+        const lineas = contenido.trim().split('\n');
+
+        let nuevas = 0;
+        for (let i = 1; i < lineas.length; i++) {
+            const partes = lineas[i].split(',');
+
+            if (partes.length < 3) continue;
+
+            const fechaStr = partes[0].trim();
+            const nombre = partes[1].trim();
+            const dni = partes[2].trim();
+
+            // Verificamos si ya existe
+            const yaExiste = registros.some(r =>
+                r.dni === dni &&
+                r.fecha.slice(0, 10) === new Date(fechaStr).toISOString().slice(0, 10)
+            );
+
+            if (!yaExiste) {
+                const registro = {
+                    fecha: new Date(fechaStr).toISOString(),
+                    nombre: nombre,
+                    dni: dni,
+                    tipo: "web"
+                };
+                registros.push(registro);
+                nuevas++;
             }
-
-            const hoy = new Date().toLocaleDateString();
-            let nuevosRegistros = 0;
-            let duplicados = 0;
-
-            entradasWeb.forEach(dni => {
-                // Verificar si ya está registrado hoy
-                const yaRegistrado = registros.some(r => 
-                    r.dni === dni && 
-                    esHoyISO(r.fecha)
-                );
-
-                if (!yaRegistrado) {
-                    registros.push({
-                        dni: dni,
-                        nombre: "Entrada Web",
-                        fecha: new Date().toISOString(),
-                        tipo: "web"
-                    });
-                    nuevosRegistros++;
-                } else {
-                    duplicados++;
-                }
-            });
-
-            guardarRegistros();
-            actualizarRegistros();
-            
-            importSummary.innerHTML = `
-                <strong>Resumen de importación:</strong><br>
-                ✅ Nuevos registros: ${nuevosRegistros}<br>
-                ⚠️ Duplicados: ${duplicados}<br>
-                📅 Total registros hoy: ${registros.filter(r => esHoy(r.fecha)).length}
-            `;
-            
-            mostrarResultado('success', '✅ Importación completada', `
-                Se importaron ${nuevosRegistros} entradas web<br>
-                ${duplicados} ya estaban registradas
-            `);
-            playSuccessSound();
         }
+
+        guardarRegistros();
+        actualizarRegistros();
+        alert(`✅ Se importaron ${nuevas} registros desde archivo web.`);
+        event.target.value = ''; // Limpia el input
+    };
+
+    lector.readAsText(archivo);
+}
 
         // Buscar socios (autocompletado)
         function buscarSocios() {
