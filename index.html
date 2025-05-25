@@ -478,40 +478,47 @@ function exportarRegistros() {
 
     const reader = new FileReader();
     reader.onload = function(e) {
-        const content = e.target.result;
-        const lines = content.trim().split(/\r?\n/);
-        if (lines.length <= 1) {
-            mostrarResultado('error', '❌ Archivo vacío o malformado', 'No se detectaron registros.');
+        const content = e.target.result.trim();
+        
+        // Detectar separador automático
+        const sep = content.includes(';') ? ';' : ',';
+        const lines = content.split(/\r?\n/);
+
+        // Leer encabezados y buscar columnas
+        const headers = lines[0].split(sep).map(h => h.trim().replace(/(^"|"$)/g, ''));
+        const idxNombre = headers.findIndex(h => h.toLowerCase().includes("nombre y apellido"));
+        const idxDni = headers.findIndex(h => h.toLowerCase().startsWith("dni"));
+
+        if (idxNombre === -1 || idxDni === -1) {
+            mostrarResultado('error', '❌ Encabezados no válidos', 'No se encontraron columnas "Nombre Y Apellido" o "DNI".');
             return;
         }
 
-        let nuevosRegistros = 0;
+        let nuevos = 0;
 
         for (let i = 1; i < lines.length; i++) {
-            const line = lines[i].trim();
-            if (!line) continue;
+            const campos = lines[i].split(sep);
+            if (!campos[idxNombre] || !campos[idxDni]) continue;
 
-            // Usa una expresión regular para extraer los campos entre comillas
-            const match = line.match(/"([^"]*)","([^"]*)","([^"]*)","([^"]*)"/);
-            if (match) {
-                const nombre = match[2];
-                const dni = match[3];
+            const nombre = campos[idxNombre].replace(/"/g, '').trim();
+            const dni = campos[idxDni].replace(/"/g, '').trim();
 
-                registros.push({
-                    nombre,
-                    dni,
-                    fecha: new Date().toISOString(),
-                    tipo: "web"
-                });
+            if (!nombre || !dni) continue;
 
-                nuevosRegistros++;
-            }
+            registros.push({
+                nombre,
+                dni,
+                fecha: new Date().toISOString(),
+                tipo: "web"
+            });
+            nuevos++;
         }
 
         guardarRegistros();
         actualizarRegistros();
-        mostrarResultado('success', '✅ Entradas web cargadas', `${nuevosRegistros} registro(s) importado(s).`);
-        console.log(`✅ Importados: ${nuevosRegistros}`);
+
+        mostrarResultado('success', '✅ Entradas web cargadas', `${nuevos} registro(s) importado(s).`);
+        console.log(`✅ Importados: ${nuevos}`);
     };
 
     reader.readAsText(file);
