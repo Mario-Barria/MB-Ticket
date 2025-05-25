@@ -517,7 +517,7 @@ function exportarRegistros() {
             const campos = row.split(sep).map(c => c.replace(/"/g, '').trim());
 
             const nombre = row['Nombre Y Apellido']?.trim();
-const dni = row['DNI:']?.trim();  // ← ¡Con dos puntos!
+            const dni = row['DNI']?.trim() || row['DNI:']?.trim();
 
             if (nombre && dni) {
                 registros.push({
