@@ -480,21 +480,27 @@ function exportarRegistros() {
     reader.onload = function(e) {
         const content = e.target.result.trim();
 
-        // Detectar separador automáticamente (; o ,)
         const sep = content.includes(';') ? ';' : ',';
         const lines = content.split(/\r?\n/);
 
-        // Limpiar encabezados
         const headers = lines[0].split(sep).map(h =>
-            h.replace(/[^a-zA-Z0-9 ]/g, '').trim().toLowerCase()
+            h.replace(/[^a-zA-Z0-9áéíóúÁÉÍÓÚñÑ: ]/g, '').trim().toLowerCase()
         );
 
-        // Buscar columnas
-        const idxNombre = headers.findIndex(h => h.includes("nombre") && h.includes("apellido"));
-        const idxDni = headers.findIndex(h => h.includes("dni"));
+        // Ahora buscamos también "nombre y apellido" y "dni"
+        const idxNombre = headers.findIndex(h =>
+            h.includes("nombre") && h.includes("apellido")
+        );
+        const idxDni = headers.findIndex(h =>
+            h.includes("dni")
+        );
 
         if (idxNombre === -1 || idxDni === -1) {
-            mostrarResultado('error', '❌ Encabezados no válidos', 'No se encontraron las columnas "Nombre y Apellido" o "DNI".');
+            mostrarResultado('error', '❌ Encabezados no válidos', `
+                No se encontraron las columnas:<br>
+                - "Nombre y Apellido"<br>
+                - "DNI"
+            `);
             return;
         }
 
@@ -502,11 +508,10 @@ function exportarRegistros() {
 
         for (let i = 1; i < lines.length; i++) {
             const campos = lines[i].split(sep);
-
             if (!campos[idxNombre] || !campos[idxDni]) continue;
 
             const nombre = campos[idxNombre].replace(/"/g, '').trim();
-            const dni = campos[idxDni].replace(/"/g, '').trim();
+            const dni = campos[idxDni].replace(/"/g, '').trim().replace(':', '');
 
             if (!nombre || !dni) continue;
 
@@ -528,6 +533,7 @@ function exportarRegistros() {
 
     reader.readAsText(file);
 }
+
 
 
 
