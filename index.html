@@ -471,73 +471,49 @@ function exportarRegistros() {
             reader.readAsArrayBuffer(file);
         }
 
-        // Importar entradas web al sistema
-        function importarEntradasWeb(event) {
+ 
+<!-- Sección de Importar Entradas Web corregida -->
+<script>
+function importarEntradasWeb(event) {
     const file = event.target.files[0];
     if (!file) return;
 
     const reader = new FileReader();
     reader.onload = function(e) {
         const content = e.target.result;
+        const lines = content.split(/\r?\n/).filter(line => line.trim() !== '');
 
-        // Detectar separador y dividir líneas
-        const sep = content.includes(';') ? ';' : ',';
-        const lines = content.trim().split(/\r?\n/);
+        const headers = lines[0].split(/,(?=(?:(?:[^"]*"){2})*[^"]*$)/).map(h => h.replace(/["']/g, '').trim());
 
-        if (lines.length <= 1) {
-            mostrarResultado('error', '❌ Archivo vacío', 'No se detectaron registros.');
+        const nombreIndex = headers.findIndex(h => h.toLowerCase().includes('nombre y apellido'));
+        const dniIndex = headers.findIndex(h => h.toLowerCase().includes('dni'));
+
+        if (nombreIndex === -1 || dniIndex === -1) {
+            alert('No se encontraron las columnas de Nombre y/o DNI.');
             return;
         }
 
-        // Procesar encabezados (sin comillas, minúsculas, limpios)
-        const headers = lines[0].split(sep).map(h =>
-            h.replace(/["\r\n]/g, '').trim().toLowerCase()
-        );
-
-        // Buscar índice de columnas DNI y Nombre
-        const idxNombre = headers.findIndex(h => h.includes("nombre") && h.includes("apellido"));
-        const idxDni = headers.findIndex(h => h.includes("dni"));
-
-        if (idxNombre === -1 || idxDni === -1) {
-            mostrarResultado('error', '❌ Encabezados no válidos', `
-                No se encontraron columnas esperadas como:<br>
-                - "Nombre y Apellido"<br>
-                - "DNI"
-            `);
-            return;
-        }
-
-        let nuevos = 0;
+        const nuevasEntradas = [];
 
         for (let i = 1; i < lines.length; i++) {
-            const row = lines[i];
-            if (!row) continue;
+            const row = lines[i].split(/,(?=(?:(?:[^"]*"){2})*[^"]*$)/);
+            if (row.length <= Math.max(nombreIndex, dniIndex)) continue;
 
-            // Separar con el separador correcto y limpiar comillas
-            const campos = row.split(sep).map(c => c.replace(/"/g, '').trim());
+            const nombre = row[nombreIndex].replace(/["']/g, '').trim();
+            const dni = row[dniIndex].replace(/["']/g, '').trim();
 
-            const nombre = row['Nombre Y Apellido']?.trim();
-            const dni = row['DNI']?.trim() || row['DNI:']?.trim();
-
-            if (nombre && dni) {
-                registros.push({
-                    nombre,
-                    dni,
-                    fecha: new Date().toISOString(),
-                    tipo: "web"
-                });
-                nuevos++;
+            if (nombre && dni && !isNaN(dni)) {
+                nuevasEntradas.push({ nombre, dni });
             }
         }
 
-        guardarRegistros();
-        actualizarRegistros();
-
-        mostrarResultado('success', '✅ Entradas web cargadas', `${nuevos} registro(s) importado(s).`);
+        entradasWeb = nuevasEntradas;
+        localStorage.setItem('entradasWeb', JSON.stringify(entradasWeb));
+        alert(`✅ Entradas web cargadas: ${entradasWeb.length}`);
     };
-
-    reader.readAsText(file, 'UTF-8');
+    reader.readAsText(file);
 }
+</script>
 
 
 
