@@ -446,9 +446,9 @@ function exportarRegistros() {
             try {
                 const content = e.target.result;
                 const lines = content.split(/\r?\n/).filter(line => line.trim() !== '');
-                
-                // Detectar encabezado y columnas
-                const headers = lines[0].split(',').map(h => h.trim().toLowerCase());
+
+                // Eliminar comillas dobles de cada campo
+                const headers = lines[0].split(',').map(h => h.replace(/"/g, '').trim().toLowerCase());
                 const dniIndex = headers.findIndex(h => h === 'dni');
 
                 if (dniIndex === -1) {
@@ -456,8 +456,8 @@ function exportarRegistros() {
                 }
 
                 const dnis = lines.slice(1).map(line => {
-                    const cols = line.split(',');
-                    return cols[dniIndex]?.trim();
+                    const cols = line.split(',').map(col => col.replace(/"/g, '').trim());
+                    return cols[dniIndex];
                 }).filter(Boolean);
 
                 if (dnis.length === 0) throw new Error("No se encontró ningún DNI");
@@ -475,7 +475,6 @@ function exportarRegistros() {
 
         reader.readAsText(file);
     } else {
-        // Leer Excel (xls/xlsx)
         reader.onload = function(e) {
             try {
                 const data = new Uint8Array(e.target.result);
