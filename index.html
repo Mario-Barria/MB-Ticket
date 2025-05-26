@@ -434,49 +434,119 @@ function exportarRegistros() {
         }
 
         // Cargar entradas web desde Excel/CSV
-<script>
-function importarEntradasWeb(event) {
+        function cargarEntradasWeb(event) {
     const file = event.target.files[0];
     if (!file) return;
 
+    const extension = file.name.split('.').pop().toLowerCase();
+
     const reader = new FileReader();
-    reader.onload = function(e) {
-        const content = e.target.result;
-        const lines = content.split(/\r?\n/).filter(line => line.trim() !== '');
 
-        const headers = lines[0].split(/,(?=(?:(?:[^"]*"){2})*[^"]*$)/).map(h => h.replace(/["']/g, '').trim());
+    if (extension === 'csv') {
+        reader.onload = function(e) {
+            try {
+                const content = e.target.result;
+                const lines = content.split(/\r?\n/).filter(line => line.trim() !== '');
 
-        const nombreIndex = headers.findIndex(h => h.toLowerCase().includes('nombre y apellido'));
-        const dniIndex = headers.findIndex(h => h.toLowerCase().includes('dni'));
+                // Detectar cabecera
+                const headers = lines[0].split(/[,;]/).map(h => h.trim().toLowerCase());
+                const dniIndex = headers.findIndex(h => h === 'dni');
 
-        if (nombreIndex === -1 || dniIndex === -1) {
-            alert('No se encontraron las columnas de Nombre y/o DNI.');
-            return;
-        }
+                if (dniIndex === -1) throw new Error("No se encontró la columna 'DNI'");
 
-        const nuevasEntradas = [];
+                const dnis = lines.slice(1).map(line => {
+                    const cols = line.split(/[,;]/);
+                    return cols[dniIndex]?.trim();
+                }).filter(Boolean);
 
-        for (let i = 1; i < lines.length; i++) {
-            const row = lines[i].split(/,(?=(?:(?:[^"]*"){2})*[^"]*$)/);
-            if (row.length <= Math.max(nombreIndex, dniIndex)) continue;
+                webSalesStatus.textContent = `✅ Entradas web cargadas: ${dnis.length}`;
+                webSalesStatus.style.color = "green";
+                importWebBtn.disabled = false;
 
-            const nombre = row[nombreIndex].replace(/["']/g, '').trim();
-            const dni = row[dniIndex].replace(/["']/g, '').trim();
-
-            if (nombre && dni && !isNaN(dni)) {
-                nuevasEntradas.push({ nombre, dni });
+                entradasWeb = dnis;
+            } catch (error) {
+                webSalesStatus.textContent = "❌ Error: El archivo CSV debe tener columna 'DNI'";
+                webSalesStatus.style.color = "red";
+                console.error("Error al procesar CSV:", error);
             }
-        }
+        };
 
-        entradasWeb = nuevasEntradas;
-        localStorage.setItem('entradasWeb', JSON.stringify(entradasWeb));
-        alert(`✅ Entradas web cargadas: ${entradasWeb.length}`);
-    };
-    reader.readAsText(file);
+        reader.readAsText(file);
+    } else {
+        // Excel
+        reader.onload = function(e) {
+            try {
+                const data = new Uint8Array(e.target.result);
+                const workbook = XLSX.read(data, { type: 'array' });
+                const firstSheet = workbook.Sheets[workbook.SheetNames[0]];
+                const jsonData = XLSX.utils.sheet_to_json(firstSheet);
+
+                const dnis = jsonData.map(item => item.DNI?.toString().trim()).filter(Boolean);
+
+                webSalesStatus.textContent = `✅ Entradas web cargadas: ${dnis.length}`;
+                webSalesStatus.style.color = "green";
+                importWebBtn.disabled = false;
+
+                entradasWeb = dnis;
+            } catch (error) {
+                webSalesStatus.textContent = "❌ Error: El archivo debe tener columna 'DNI'";
+                webSalesStatus.style.color = "red";
+                console.error("Error al procesar Excel:", error);
+            }
+        };
+
+        reader.readAsArrayBuffer(file);
+    }
 }
-</script>
 
+        // Importar entradas web al sistema
+        function importarEntradasWeb() {
+            if (entradasWeb.length === 0) {
+                mostrarResultado('error', '❌ Error', 'No hay entradas web para importar');
+                playErrorSound();
+                return;
+            }
 
+            const hoy = new Date().toLocaleDateString();
+            let nuevosRegistros = 0;
+            let duplicados = 0;
+
+            entradasWeb.forEach(dni => {
+                // Verificar si ya está registrado hoy
+                const yaRegistrado = registros.some(r => 
+                    r.dni === dni && 
+                    esHoyISO(r.fecha)
+                );
+
+                if (!yaRegistrado) {
+                    registros.push({
+                        dni: dni,
+                        nombre: "Entrada Web",
+                        fecha: new Date().toISOString(),
+                        tipo: "web"
+                    });
+                    nuevosRegistros++;
+                } else {
+                    duplicados++;
+                }
+            });
+
+            guardarRegistros();
+            actualizarRegistros();
+            
+            importSummary.innerHTML = `
+                <strong>Resumen de importación:</strong><br>
+                ✅ Nuevos registros: ${nuevosRegistros}<br>
+                ⚠️ Duplicados: ${duplicados}<br>
+                📅 Total registros hoy: ${registros.filter(r => esHoy(r.fecha)).length}
+            `;
+            
+            mostrarResultado('success', '✅ Importación completada', `
+                Se importaron ${nuevosRegistros} entradas web<br>
+                ${duplicados} ya estaban registradas
+            `);
+            playSuccessSound();
+        }
 
         // Buscar socios (autocompletado)
         function buscarSocios() {
