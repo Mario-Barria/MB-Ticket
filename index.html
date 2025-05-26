@@ -444,15 +444,21 @@ function exportarRegistros() {
     if (extension === 'csv') {
         reader.onload = function(e) {
             try {
-                const content = e.target.result;
-                const lines = content.split(/\r?\n/).filter(line => line.trim() !== '');
+                let content = e.target.result;
 
-                // Eliminar comillas dobles de cada campo
-                const headers = lines[0].split(',').map(h => h.replace(/"/g, '').trim().toLowerCase());
-                const dniIndex = headers.findIndex(h => h === 'dni');
+                // Eliminar BOM si existe
+                if (content.charCodeAt(0) === 0xFEFF) {
+                    content = content.slice(1);
+                }
+
+                const lines = content.split(/\r?\n/).filter(line => line.trim() !== '');
+                const rawHeaders = lines[0].split(',').map(h => h.replace(/"/g, '').replace(/\uFEFF/g, '').trim().toLowerCase());
+
+                // Buscar índice de la columna que contenga "dni"
+                const dniIndex = rawHeaders.findIndex(h => h.includes('dni'));
 
                 if (dniIndex === -1) {
-                    throw new Error("No se encontró la columna 'DNI'");
+                    throw new Error("No se encontró ninguna columna que contenga 'DNI'");
                 }
 
                 const dnis = lines.slice(1).map(line => {
@@ -460,7 +466,7 @@ function exportarRegistros() {
                     return cols[dniIndex];
                 }).filter(Boolean);
 
-                if (dnis.length === 0) throw new Error("No se encontró ningún DNI");
+                if (dnis.length === 0) throw new Error("No se encontró ningún DNI válido");
 
                 webSalesStatus.textContent = `✅ Entradas web cargadas: ${dnis.length}`;
                 webSalesStatus.style.color = "green";
@@ -475,6 +481,7 @@ function exportarRegistros() {
 
         reader.readAsText(file);
     } else {
+        // Excel
         reader.onload = function(e) {
             try {
                 const data = new Uint8Array(e.target.result);
@@ -482,9 +489,15 @@ function exportarRegistros() {
                 const firstSheet = workbook.Sheets[workbook.SheetNames[0]];
                 const jsonData = XLSX.utils.sheet_to_json(firstSheet);
 
-                const dnis = jsonData.map(item => item.DNI?.toString().trim()).filter(Boolean);
+                // Buscar campo que contenga 'dni'
+                const firstRow = jsonData[0] || {};
+                const dniKey = Object.keys(firstRow).find(k => k.toLowerCase().includes('dni'));
 
-                if (dnis.length === 0) throw new Error("No se encontró ningún DNI");
+                if (!dniKey) throw new Error("No se encontró ninguna columna que contenga 'DNI'");
+
+                const dnis = jsonData.map(item => item[dniKey]?.toString().trim()).filter(Boolean);
+
+                if (dnis.length === 0) throw new Error("No se encontró ningún DNI válido");
 
                 webSalesStatus.textContent = `✅ Entradas web cargadas: ${dnis.length}`;
                 webSalesStatus.style.color = "green";
