@@ -435,69 +435,41 @@ function exportarRegistros() {
 
         // Cargar entradas web desde Excel/CSV
         function cargarEntradasWeb(event) {
-    const file = event.target.files[0];
-    if (!file) return;
+            const file = event.target.files[0];
+            if (!file) return;
 
-    const extension = file.name.split('.').pop().toLowerCase();
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                try {
+                    const data = new Uint8Array(e.target.result);
+                    const workbook = XLSX.read(data, { type: 'array' });
+                    const firstSheet = workbook.Sheets[workbook.SheetNames[0]];
+                    const jsonData = XLSX.utils.sheet_to_json(firstSheet);
+                    
+                    // Suponemos que el Excel tiene columna "DNI"
+                    const dnis = jsonData.map(item => item.DNI?.toString().trim()).filter(Boolean);
+                    
+                    webSalesStatus.textContent = `✅ Entradas web cargadas: ${dnis.length}`;
+                    webSalesStatus.style.color = "green";
+                    importWebBtn.disabled = false;
+                    
+                    // Guardar temporalmente para importación
+                    entradasWeb = dnis;
 
-    const reader = new FileReader();
-
-    if (extension === 'csv') {
-        reader.onload = function(e) {
-            try {
-                const content = e.target.result;
-                const lines = content.split(/\r?\n/).filter(line => line.trim() !== '');
-
-                // Detectar cabecera
-                const headers = lines[0].split(/[,;]/).map(h => h.trim().toLowerCase());
-                const dniIndex = headers.findIndex(h => h === 'dni');
-
-                if (dniIndex === -1) throw new Error("No se encontró la columna 'DNI'");
-
-                const dnis = lines.slice(1).map(line => {
-                    const cols = line.split(/[,;]/);
-                    return cols[dniIndex]?.trim();
-                }).filter(Boolean);
-
-                webSalesStatus.textContent = `✅ Entradas web cargadas: ${dnis.length}`;
-                webSalesStatus.style.color = "green";
-                importWebBtn.disabled = false;
-
-                entradasWeb = dnis;
-            } catch (error) {
-                webSalesStatus.textContent = "❌ Error: El archivo CSV debe tener columna 'DNI'";
+                } catch (error) {
+                    webSalesStatus.textContent = "❌ Error: El archivo debe tener columna 'DNI'";
+                    webSalesStatus.style.color = "red";
+                    console.error("Error al procesar archivo:", error);
+                }
+            };
+            
+            reader.onerror = () => {
+                webSalesStatus.textContent = "❌ Error al leer el archivo";
                 webSalesStatus.style.color = "red";
-                console.error("Error al procesar CSV:", error);
-            }
-        };
-
-        reader.readAsText(file);
-    } else {
-        // Excel
-        reader.onload = function(e) {
-            try {
-                const data = new Uint8Array(e.target.result);
-                const workbook = XLSX.read(data, { type: 'array' });
-                const firstSheet = workbook.Sheets[workbook.SheetNames[0]];
-                const jsonData = XLSX.utils.sheet_to_json(firstSheet);
-
-                const dnis = jsonData.map(item => item.DNI?.toString().trim()).filter(Boolean);
-
-                webSalesStatus.textContent = `✅ Entradas web cargadas: ${dnis.length}`;
-                webSalesStatus.style.color = "green";
-                importWebBtn.disabled = false;
-
-                entradasWeb = dnis;
-            } catch (error) {
-                webSalesStatus.textContent = "❌ Error: El archivo debe tener columna 'DNI'";
-                webSalesStatus.style.color = "red";
-                console.error("Error al procesar Excel:", error);
-            }
-        };
-
-        reader.readAsArrayBuffer(file);
-    }
-}
+            };
+            
+            reader.readAsArrayBuffer(file);
+        }
 
         // Importar entradas web al sistema
         function importarEntradasWeb() {
