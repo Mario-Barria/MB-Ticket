@@ -434,45 +434,6 @@ function exportarRegistros() {
         }
 
         // Cargar entradas web desde Excel/CSV
-        function cargarEntradasWeb(event) {
-            const file = event.target.files[0];
-            if (!file) return;
-
-            const reader = new FileReader();
-            reader.onload = function(e) {
-                try {
-                    const data = new Uint8Array(e.target.result);
-                    const workbook = XLSX.read(data, { type: 'array' });
-                    const firstSheet = workbook.Sheets[workbook.SheetNames[0]];
-                    const jsonData = XLSX.utils.sheet_to_json(firstSheet);
-                    
-                    // Suponemos que el Excel tiene columna "DNI"
-                    const dnis = jsonData.map(item => item.DNI?.toString().trim()).filter(Boolean);
-                    
-                    webSalesStatus.textContent = `✅ Entradas web cargadas: ${dnis.length}`;
-                    webSalesStatus.style.color = "green";
-                    importWebBtn.disabled = false;
-                    
-                    // Guardar temporalmente para importación
-                    entradasWeb = dnis;
-
-                } catch (error) {
-                    webSalesStatus.textContent = "❌ Error: El archivo debe tener columna 'DNI'";
-                    webSalesStatus.style.color = "red";
-                    console.error("Error al procesar archivo:", error);
-                }
-            };
-            
-            reader.onerror = () => {
-                webSalesStatus.textContent = "❌ Error al leer el archivo";
-                webSalesStatus.style.color = "red";
-            };
-            
-            reader.readAsArrayBuffer(file);
-        }
-
- 
-<!-- Sección de Importar Entradas Web corregida -->
 <script>
 function importarEntradasWeb(event) {
     const file = event.target.files[0];
@@ -514,8 +475,6 @@ function importarEntradasWeb(event) {
     reader.readAsText(file);
 }
 </script>
-
-
 
 
 
