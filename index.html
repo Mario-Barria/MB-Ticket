@@ -527,8 +527,8 @@ function exportarRegistros() {
             reader.readAsText(file);
         }
 
-        // Cargar entradas web desde Excel/CSV
-        function cargarEntradasWeb(event) {
+        // Cargar entradas web desde Excel/CSV - VERSIÓN CORREGIDA
+function cargarEntradasWeb(event) {
     const file = event.target.files[0];
     if (!file) return;
 
@@ -557,25 +557,18 @@ function exportarRegistros() {
 
                 const dnis = lines.slice(1).map(line => {
                     const cols = line.split(',').map(col => col.replace(/"/g, '').trim());
-                    return cols[dniIndex];
+                    let dni = cols[dniIndex];
+                    
+                    // ✅ LIMPIAR DNI si viene en formato "Nombre;Apellido;DNI"
+                    if (dni.includes(';')) {
+                        const parts = dni.split(';');
+                        dni = parts[parts.length - 1].trim(); // Tomar solo la última parte
+                    }
+                    
+                    return dni;
                 }).filter(Boolean);
 
                 if (dnis.length === 0) throw new Error("No se encontró ningún DNI válido");
-
-
-// DENTRO DE: if (extension === 'csv') { ... }
-const dnis = lines.slice(1).map(line => {
-    const cols = line.split(',').map(col => col.replace(/"/g, '').trim());
-    let dni = cols[dniIndex];
-    
-    // ✅ NUEVO: Limpiar DNI si viene en formato "Nombre;Apellido;DNI"
-    if (dni.includes(';')) {
-        const parts = dni.split(';');
-        dni = parts[parts.length - 1].trim(); // Tomar solo la última parte
-    }
-    
-    return dni;
-}).filter(Boolean);
 
                 webSalesStatus.textContent = `✅ Entradas web cargadas: ${dnis.length}`;
                 webSalesStatus.style.color = "green";
@@ -604,7 +597,17 @@ const dnis = lines.slice(1).map(line => {
 
                 if (!dniKey) throw new Error("No se encontró ninguna columna que contenga 'DNI'");
 
-                const dnis = jsonData.map(item => item[dniKey]?.toString().trim()).filter(Boolean);
+                const dnis = jsonData.map(item => {
+                    let dni = item[dniKey]?.toString().trim();
+                    
+                    // ✅ LIMPIAR DNI si viene en formato "Nombre;Apellido;DNI"
+                    if (dni && dni.includes(';')) {
+                        const parts = dni.split(';');
+                        dni = parts[parts.length - 1].trim(); // Tomar solo la última parte
+                    }
+                    
+                    return dni;
+                }).filter(Boolean);
 
                 if (dnis.length === 0) throw new Error("No se encontró ningún DNI válido");
 
@@ -616,27 +619,12 @@ const dnis = lines.slice(1).map(line => {
                 webSalesStatus.textContent = "❌ Error: " + error.message;
                 webSalesStatus.style.color = "red";
                 console.error("Error al procesar Excel:", error);
-            
-// DENTRO DEL BLOQUE else { // Excel ... }
-const dnis = jsonData.map(item => {
-    let dni = item[dniKey]?.toString().trim();
-    
-    // ✅ NUEVO: Limpiar DNI si viene en formato "Nombre;Apellido;DNI"
-    if (dni && dni.includes(';')) {
-        const parts = dni.split(';');
-        dni = parts[parts.length - 1].trim(); // Tomar solo la última parte
-    }
-    
-    return dni;
-}).filter(Boolean);
-
-}
+            }
         };
 
         reader.readAsArrayBuffer(file);
     }
 }
-
 
         // Importar entradas web al sistema
         function importarEntradasWeb() {
