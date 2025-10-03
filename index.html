@@ -89,13 +89,30 @@
         }
         
         #result {
-            display: none;
-            margin: 20px auto;
-            padding: 20px;
-            border-radius: 8px;
-            text-align: center;
-            max-width: 500px;
-        }
+  display: none;
+  margin: 0;
+  padding: 25px;
+  border-radius: 12px;
+  text-align: center;
+  max-width: 80%;
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  z-index: 10000;
+  box-shadow: 0 8px 30px rgba(0,0,0,0.4);
+  font-size: 18px;
+  font-weight: bold;
+  backdrop-filter: blur(5px);
+}
+
+@media (max-width: 768px) {
+  #result {
+    max-width: 90%;
+    font-size: 16px;
+    padding: 20px;
+  }
+}
         
         .success {
             background-color: #d4edda;
@@ -351,8 +368,85 @@ function exportarRegistros() {
     a.click();
 }
         // Variables globales
-        let socios = [];
-        let registros = JSON.parse(localStorage.getItem('registros')) || [];
+        // 🔐 SISTEMA DE ACCESO
+    const CONTRASENA_CORRECTA = "club123"; // CAMBIAR ESTA CONTRASEÑA
+    
+    function verificarAcceso() {
+        // Si ya tiene acceso guardado
+        const accesoGuardado = localStorage.getItem('acceso_autorizado');
+        if (accesoGuardado === 'true') return true;
+        
+        // Pedir contraseña
+        let intentos = 3;
+        
+        while (intentos > 0) {
+            const contrasena = prompt(`🔒 Acceso al Sistema de Control de Entradas\n\nIngrese la contraseña (${intentos} intentos restantes):`);
+            
+            if (contrasena === null) {
+                // Usuario canceló
+                mostrarPantallaBloqueo();
+                return false;
+            }
+            
+            if (contrasena === CONTRASENA_CORRECTA) {
+                localStorage.setItem('acceso_autorizado', 'true');
+                return true;
+            }
+            
+            intentos--;
+            if (intentos > 0) {
+                alert(`❌ Contraseña incorrecta. Le quedan ${intentos} intentos.`);
+            }
+        }
+        
+        mostrarPantallaBloqueo();
+        return false;
+    }
+    
+    function mostrarPantallaBloqueo() {
+        document.body.innerHTML = `
+            <div style="
+                display: flex;
+                justify-content: center;
+                align-items: center;
+                height: 100vh;
+                background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+                font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+                color: white;
+                text-align: center;
+            ">
+                <div style="background: rgba(255,255,255,0.1); padding: 40px; border-radius: 15px; backdrop-filter: blur(10px);">
+                    <div style="font-size: 60px; margin-bottom: 20px;">🔒</div>
+                    <h1 style="margin: 0 0 10px 0;">Acceso Denegado</h1>
+                    <p style="margin: 0 0 20px 0; opacity: 0.8;">Contraseña incorrecta o acceso no autorizado</p>
+                    <button onclick="location.reload()" style="
+                        background: white;
+                        color: #667eea;
+                        border: none;
+                        padding: 12px 30px;
+                        border-radius: 25px;
+                        font-weight: bold;
+                        cursor: pointer;
+                        font-size: 16px;
+                    ">Reintentar</button>
+                    <p style="margin-top: 20px; font-size: 12px; opacity: 0.6;">
+                        Sistema de Control de Acceso - MB Ticket
+                    </p>
+                </div>
+            </div>
+        `;
+    }
+
+    // Verificar acceso al cargar
+    if (!verificarAcceso()) {
+        // No continuar cargando la aplicación
+        throw new Error("Acceso no autorizado");
+    }
+
+    // Variables globales (CONTINUACIÓN NORMAL)
+    let socios = [];
+    let registros = JSON.parse(localStorage.getItem('registros')) || [];
+
         let entradasWeb = JSON.parse(localStorage.getItem('entradasWeb')) || [];
         let scanner;
         let selectedSocio = null;
@@ -468,6 +562,21 @@ function exportarRegistros() {
 
                 if (dnis.length === 0) throw new Error("No se encontró ningún DNI válido");
 
+
+// DENTRO DE: if (extension === 'csv') { ... }
+const dnis = lines.slice(1).map(line => {
+    const cols = line.split(',').map(col => col.replace(/"/g, '').trim());
+    let dni = cols[dniIndex];
+    
+    // ✅ NUEVO: Limpiar DNI si viene en formato "Nombre;Apellido;DNI"
+    if (dni.includes(';')) {
+        const parts = dni.split(';');
+        dni = parts[parts.length - 1].trim(); // Tomar solo la última parte
+    }
+    
+    return dni;
+}).filter(Boolean);
+
                 webSalesStatus.textContent = `✅ Entradas web cargadas: ${dnis.length}`;
                 webSalesStatus.style.color = "green";
                 importWebBtn.disabled = false;
@@ -507,7 +616,21 @@ function exportarRegistros() {
                 webSalesStatus.textContent = "❌ Error: " + error.message;
                 webSalesStatus.style.color = "red";
                 console.error("Error al procesar Excel:", error);
-            }
+            
+// DENTRO DEL BLOQUE else { // Excel ... }
+const dnis = jsonData.map(item => {
+    let dni = item[dniKey]?.toString().trim();
+    
+    // ✅ NUEVO: Limpiar DNI si viene en formato "Nombre;Apellido;DNI"
+    if (dni && dni.includes(';')) {
+        const parts = dni.split(';');
+        dni = parts[parts.length - 1].trim(); // Tomar solo la última parte
+    }
+    
+    return dni;
+}).filter(Boolean);
+
+}
         };
 
         reader.readAsArrayBuffer(file);
@@ -776,18 +899,29 @@ function exportarRegistros() {
 
         // Mostrar resultado
         function mostrarResultado(tipo, icono, mensaje) {
-            const result = document.getElementById('result');
-            result.innerHTML = `
-                <div class="icon">${icono}</div>
-                <div>${mensaje}</div>
-            `;
-            result.className = tipo;
-            result.style.display = 'block';
-            
-            setTimeout(() => {
-                result.style.display = 'none';
-            }, 3000);
-        }
+  const result = document.getElementById('result');
+  result.innerHTML = `
+    <div class="icon" style="font-size: 50px; margin-bottom: 15px;">${icono}</div>
+    <div style="font-size: 18px; line-height: 1.4;">${mensaje}</div>
+  `;
+  result.className = tipo;
+  result.style.display = 'block';
+
+  // Sonido
+  try {
+    const sound = tipo === 'success' ? 
+      document.getElementById('successSound') : 
+      document.getElementById('errorSound');
+    sound.currentTime = 0;
+    sound.play().catch(e => console.log("Sonido bloqueado:", e));
+  } catch (e) {
+    console.log("Error en sonido:", e);
+  }
+
+  setTimeout(() => {
+    result.style.display = 'none';
+  }, 3000);
+}
 
         // Verificar si es hoy
         function esHoy(fechaStr) {
