@@ -274,8 +274,7 @@
 <body>
     <div class="container">
         <header>
-            <img src="Logo MB-ticket.png" alt="Logo" class="logo">
-    <h1>Control de Acceso - Estadio</h1>
+            
     <!-- Banner MB Ticket -->
     <div style="
         background: linear-gradient(45deg, #667eea, #764ba2);
@@ -421,35 +420,6 @@ const CONFIG_CLUBES = {
     }
 };
 
-        function mostrarPantallaAcceso() {
-    document.body.innerHTML = `
-        <div style="... fondo azul de MB Ticket ...">
-            <!-- LOGO MB TICKET SIEMPRE -->
-            <div style="margin-bottom: 25px;">
-                <div style="font-size: 48px; margin-bottom: 10px;">🎫</div>
-                <h1 style="margin: 0 0 5px 0; font-size: 24px; font-weight: 600;">MB TICKET</h1>
-                <p style="margin: 0; opacity: 0.8; font-size: 14px;">Sistema Profesional de Control de Acceso</p>
-            </div>
-            
-            <!-- FORMULARIO DE ACCESO -->
-            <div style="margin-bottom: 25px;">
-                <h2 style="...">🔒 Acceso al Sistema</h2>
-                <p style="...">Ingrese la contraseña proporcionada por su club</p>
-                
-                <input type="password" id="inputPassword" placeholder="Contraseña del club">
-                <button onclick="validarAcceso()">🚀 Ingresar al Sistema</button>
-            </div>
-            
-            <!-- INFO MB TICKET -->
-            <div style="...">
-                <p style="...">💼 <strong>MB Ticket Solutions</strong></p>
-                <p style="...">📞 +54 9 11 1234-5678</p>
-                <p style="...">✉️ soporte@mbticket.com</p>
-            </div>
-        </div>
-    `;
-}
-
         function aplicarTemaClub(clubConfig) {
     // 1. Cambiar CSS variables
     document.documentElement.style.setProperty('--primary', clubConfig.colores.primario);
@@ -516,7 +486,7 @@ function mostrarPantallaAcceso() {
                 <div style="margin-bottom: 25px;">
                     <h2 style="margin: 0 0 15px 0; font-size: 18px; font-weight: 500;">🔒 Acceso Restringido</h2>
                     <p style="margin: 0 0 20px 0; opacity: 0.9; font-size: 14px; line-height: 1.4;">
-                        Sistema desarrollado exclusivamente para <strong>${CONFIGURACION.nombreSistema}</strong>
+                        Sistema profesional de control de acceso para clubes
                     </p>
                     
                     <input type="password" 
@@ -560,13 +530,9 @@ function mostrarPantallaAcceso() {
                     margin-top: 20px;
                 ">
                     <p style="margin: 0 0 8px 0; font-size: 12px; opacity: 0.7;">
-                        💼 <strong>${CONFIGURACION.desarrollador}</strong>
-                    </p>
-                    <p style="margin: 0 0 5px 0; font-size: 11px; opacity: 0.6;">
-                        📞 ${CONFIGURACION.telefonoSoporte}
-                    </p>
-                    <p style="margin: 0; font-size: 11px; opacity: 0.6;">
-                        ✉️ ${CONFIGURACION.emailSoporte}
+                        💼 <strong>MB Ticket Solutions</strong>
+📞 +54 9 297 403-8368
+✉️ soporte@mbticket.com
                     </p>
                 </div>
                 
@@ -659,13 +625,9 @@ function mostrarPantallaBloqueo() {
                     margin-top: 20px;
                 ">
                     <p style="margin: 0 0 8px 0; font-size: 14px; opacity: 0.8;">
-                        <strong>${CONFIGURACION.desarrollador}</strong>
-                    </p>
-                    <p style="margin: 0 0 5px 0; font-size: 12px; opacity: 0.7;">
-                        📞 ${CONFIGURACION.telefonoSoporte}
-                    </p>
-                    <p style="margin: 0; font-size: 12px; opacity: 0.7;">
-                        ✉️ ${CONFIGURACION.emailSoporte}
+                        <strong>MB Ticket Solutions</strong>
+📞 +54 9 297 403-8368
+✉️ soporte@mbticket.com
                     </p>
                 </div>
             </div>
