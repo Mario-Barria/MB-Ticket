@@ -396,6 +396,16 @@ button {
             <button id="exportBtn">Generar Informe</button>
             <button id="clearBtn">Limpiar Registros</button>
         </div>
+        <div class="panel">
+    <h3 class="panel-title">Registros de Hoy</h3>
+    <div id="registros-list">
+        <p>No hay registros aún.</p>
+    </div>
+    <button id="exportBtn">Generar Informe</button>
+    <button id="clearBtn">Limpiar Registros</button>
+    <!-- BOTÓN DE CERRAR SESIÓN -->
+    <button id="logoutBtn" style="background: #FF4000; margin-top: 20px;">🔓 Cerrar Sesión</button>
+</div>
     </div>
 
     <!-- Sonidos locales para evitar problemas en móviles -->
@@ -742,13 +752,16 @@ const tabs = document.querySelectorAll('.tab');
 const tabContents = document.querySelectorAll('.tab-content');
 
 // Eventos
-csvFile.addEventListener('change', cargarSociosCSV);
+        csvFile.addEventListener('change', cargarSociosCSV);
         webSalesFile.addEventListener('change', cargarEntradasWeb);
         importWebBtn.addEventListener('click', importarEntradasWeb);
         searchInput.addEventListener('input', buscarSocios);
         manualRegisterBtn.addEventListener('click', registrarManual);
         exportBtn.addEventListener('click', exportarRegistros);
         clearBtn.addEventListener('click', limpiarRegistros);
+        // NUEVO: Botón cerrar sesión
+const logoutBtn = document.getElementById('logoutBtn');
+logoutBtn.addEventListener('click', cerrarSesion);
 
         // Tabs
         tabs.forEach(tab => {
@@ -1220,6 +1233,17 @@ function cargarEntradasWeb(event) {
             sound.play().catch(e => console.log("No se pudo reproducir sonido:", e));
         }
 
+
+// Función para cerrar sesión
+function cerrarSesion() {
+    if (confirm('¿Está seguro que desea cerrar sesión y volver a la pantalla de acceso?')) {
+        localStorage.removeItem('acceso_autorizado');
+        localStorage.removeItem('club_config');
+        location.reload();
+    }
+}
+
+        
         // Inicialización
         document.addEventListener('DOMContentLoaded', () => {
             actualizarRegistros();
