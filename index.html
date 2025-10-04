@@ -367,109 +367,253 @@ function exportarRegistros() {
     a.download = `registros_\${hoy}.csv`;
     a.click();
 }
-        // Variables globales
-        // 🔐 SISTEMA DE ACCESO
-    const CONTRASENA_CORRECTA = "club123"; // CAMBIAR ESTA CONTRASEÑA
+// 🔐 SISTEMA DE ACCESO PROFESIONAL MB TICKET
+const CONFIGURACION = {
+    contraseña: "club123", // Cambiar por cada cliente
+    nombreSistema: "Sistema de Control de Acceso",
+    desarrollador: "MB Ticket Solutions",
+    telefonoSoporte: "+54 9 11 1234-5678",
+    emailSoporte: "soporte@mbticket.com"
+};
+
+function verificarAcceso() {
+    const accesoGuardado = localStorage.getItem('acceso_autorizado');
+    if (accesoGuardado === 'true') return true;
     
-    function verificarAcceso() {
-        // Si ya tiene acceso guardado
-        const accesoGuardado = localStorage.getItem('acceso_autorizado');
-        if (accesoGuardado === 'true') return true;
-        
-        // Pedir contraseña
-        let intentos = 3;
-        
-        while (intentos > 0) {
-            const contrasena = prompt(`🔒 Acceso al Sistema de Control de Entradas\n\nIngrese la contraseña (${intentos} intentos restantes):`);
-            
-            if (contrasena === null) {
-                // Usuario canceló
-                mostrarPantallaBloqueo();
-                return false;
-            }
-            
-            if (contrasena === CONTRASENA_CORRECTA) {
-                localStorage.setItem('acceso_autorizado', 'true');
-                return true;
-            }
-            
-            intentos--;
-            if (intentos > 0) {
-                alert(`❌ Contraseña incorrecta. Le quedan ${intentos} intentos.`);
-            }
-        }
-        
-        mostrarPantallaBloqueo();
-        return false;
-    }
-    
-    function mostrarPantallaBloqueo() {
-        document.body.innerHTML = `
+    mostrarPantallaAcceso();
+    return false;
+}
+
+function mostrarPantallaAcceso() {
+    document.body.innerHTML = `
+        <div style="
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            color: white;
+            text-align: center;
+            padding: 20px;
+        ">
             <div style="
-                display: flex;
-                justify-content: center;
-                align-items: center;
-                height: 100vh;
-                background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-                font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-                color: white;
-                text-align: center;
+                background: rgba(255,255,255,0.15);
+                padding: 40px 30px;
+                border-radius: 20px;
+                backdrop-filter: blur(15px);
+                border: 1px solid rgba(255,255,255,0.2);
+                max-width: 400px;
+                width: 90%;
             ">
-                <div style="background: rgba(255,255,255,0.1); padding: 40px; border-radius: 15px; backdrop-filter: blur(10px);">
-                    <div style="font-size: 60px; margin-bottom: 20px;">🔒</div>
-                    <h1 style="margin: 0 0 10px 0;">Acceso Denegado</h1>
-                    <p style="margin: 0 0 20px 0; opacity: 0.8;">Contraseña incorrecta o acceso no autorizado</p>
-                    <button onclick="location.reload()" style="
-                        background: white;
-                        color: #667eea;
-                        border: none;
-                        padding: 12px 30px;
-                        border-radius: 25px;
-                        font-weight: bold;
-                        cursor: pointer;
-                        font-size: 16px;
-                    ">Reintentar</button>
-                    <p style="margin-top: 20px; font-size: 12px; opacity: 0.6;">
-                        Sistema de Control de Acceso - MB Ticket
+                <!-- Logo MB Ticket -->
+                <div style="margin-bottom: 25px;">
+                    <div style="font-size: 48px; margin-bottom: 10px;">🎫</div>
+                    <h1 style="margin: 0 0 5px 0; font-size: 24px; font-weight: 600;">MB TICKET</h1>
+                    <p style="margin: 0; opacity: 0.8; font-size: 14px;">Sistema Profesional de Control de Acceso</p>
+                </div>
+                
+                <!-- Formulario de acceso -->
+                <div style="margin-bottom: 25px;">
+                    <h2 style="margin: 0 0 15px 0; font-size: 18px; font-weight: 500;">🔒 Acceso Restringido</h2>
+                    <p style="margin: 0 0 20px 0; opacity: 0.9; font-size: 14px; line-height: 1.4;">
+                        Sistema desarrollado exclusivamente para <strong>${CONFIGURACION.nombreSistema}</strong>
+                    </p>
+                    
+                    <input type="password" 
+                           id="inputPassword" 
+                           placeholder="Ingrese la contraseña de acceso" 
+                           style="
+                                width: 100%;
+                                padding: 12px 15px;
+                                border: none;
+                                border-radius: 10px;
+                                background: rgba(255,255,255,0.9);
+                                color: #333;
+                                font-size: 16px;
+                                margin-bottom: 15px;
+                                box-sizing: border-box;
+                           ">
+                    
+                    <button onclick="validarAcceso()" 
+                            style="
+                                width: 100%;
+                                background: linear-gradient(45deg, #FF6B6B, #FF8E53);
+                                color: white;
+                                border: none;
+                                padding: 12px;
+                                border-radius: 10px;
+                                font-weight: bold;
+                                font-size: 16px;
+                                cursor: pointer;
+                                transition: all 0.3s;
+                            "
+                            onmouseover="this.style.transform='translateY(-2px)';"
+                            onmouseout="this.style.transform='translateY(0)';">
+                        🚀 Ingresar al Sistema
+                    </button>
+                </div>
+                
+                <!-- Información de soporte -->
+                <div style="
+                    border-top: 1px solid rgba(255,255,255,0.3);
+                    padding-top: 20px;
+                    margin-top: 20px;
+                ">
+                    <p style="margin: 0 0 8px 0; font-size: 12px; opacity: 0.7;">
+                        💼 <strong>${CONFIGURACION.desarrollador}</strong>
+                    </p>
+                    <p style="margin: 0 0 5px 0; font-size: 11px; opacity: 0.6;">
+                        📞 ${CONFIGURACION.telefonoSoporte}
+                    </p>
+                    <p style="margin: 0; font-size: 11px; opacity: 0.6;">
+                        ✉️ ${CONFIGURACION.emailSoporte}
+                    </p>
+                </div>
+                
+                <!-- Contador de intentos -->
+                <div id="intentosInfo" style="
+                    margin-top: 15px;
+                    font-size: 12px;
+                    opacity: 0.8;
+                ">Intentos restantes: 3</div>
+            </div>
+        </div>
+    `;
+    
+    // Focus en el input de contraseña
+    setTimeout(() => {
+        document.getElementById('inputPassword').focus();
+    }, 100);
+    
+    // Permitir enviar con Enter
+    document.getElementById('inputPassword').addEventListener('keypress', function(e) {
+        if (e.key === 'Enter') {
+            validarAcceso();
+        }
+    });
+}
+
+let intentosRestantes = 3;
+
+function validarAcceso() {
+    const input = document.getElementById('inputPassword');
+    const contraseñaIngresada = input.value;
+    
+    if (contraseñaIngresada === CONFIGURACION.contraseña) {
+        // Acceso concedido
+        localStorage.setItem('acceso_autorizado', 'true');
+        location.reload();
+    } else {
+        // Acceso denegado
+        intentosRestantes--;
+        
+        if (intentosRestantes > 0) {
+            document.getElementById('intentosInfo').innerHTML = 
+                `❌ Contraseña incorrecta. Intentos restantes: ${intentosRestantes}`;
+            input.value = '';
+            input.focus();
+            
+            // Efecto de vibración
+            input.style.animation = 'shake 0.5s';
+            setTimeout(() => input.style.animation = '', 500);
+        } else {
+            mostrarPantallaBloqueo();
+        }
+    }
+}
+
+function mostrarPantallaBloqueo() {
+    document.body.innerHTML = `
+        <div style="
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            background: linear-gradient(135deg, #ff6b6b 0%, #c44569 100%);
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            color: white;
+            text-align: center;
+            padding: 20px;
+        ">
+            <div style="
+                background: rgba(255,255,255,0.15);
+                padding: 40px 30px;
+                border-radius: 20px;
+                backdrop-filter: blur(15px);
+                border: 1px solid rgba(255,255,255,0.2);
+                max-width: 400px;
+                width: 90%;
+            ">
+                <div style="font-size: 60px; margin-bottom: 20px;">🚫</div>
+                <h1 style="margin: 0 0 15px 0; font-size: 24px;">Acceso Bloqueado</h1>
+                <p style="margin: 0 0 25px 0; opacity: 0.9; line-height: 1.5;">
+                    Se han agotado los intentos de acceso.<br>
+                    Por favor, contacte al administrador del sistema.
+                </p>
+                
+                <div style="
+                    border-top: 1px solid rgba(255,255,255,0.3);
+                    padding-top: 20px;
+                    margin-top: 20px;
+                ">
+                    <p style="margin: 0 0 8px 0; font-size: 14px; opacity: 0.8;">
+                        <strong>${CONFIGURACION.desarrollador}</strong>
+                    </p>
+                    <p style="margin: 0 0 5px 0; font-size: 12px; opacity: 0.7;">
+                        📞 ${CONFIGURACION.telefonoSoporte}
+                    </p>
+                    <p style="margin: 0; font-size: 12px; opacity: 0.7;">
+                        ✉️ ${CONFIGURACION.emailSoporte}
                     </p>
                 </div>
             </div>
-        `;
+        </div>
+    `;
+}
+
+// Agregar animación de shake
+const style = document.createElement('style');
+style.textContent = `
+    @keyframes shake {
+        0%, 100% { transform: translateX(0); }
+        25% { transform: translateX(-5px); }
+        75% { transform: translateX(5px); }
     }
+`;
+document.head.appendChild(style);
 
-    // Verificar acceso al cargar
-    if (!verificarAcceso()) {
-        // No continuar cargando la aplicación
-        throw new Error("Acceso no autorizado");
-    }
+// Verificar acceso al cargar
+if (!verificarAcceso()) {
+    throw new Error("Acceso no autorizado");
+}
 
-    // Variables globales (CONTINUACIÓN NORMAL)
-    let socios = [];
-    let registros = JSON.parse(localStorage.getItem('registros')) || [];
+// Variables globales (CONTINUACIÓN NORMAL)
+let socios = [];
+let registros = JSON.parse(localStorage.getItem('registros')) || [];
+let entradasWeb = JSON.parse(localStorage.getItem('entradasWeb')) || [];
+let scanner;
+let selectedSocio = null;
+let ultimoEscaneo = null;
 
-        let entradasWeb = JSON.parse(localStorage.getItem('entradasWeb')) || [];
-        let scanner;
-        let selectedSocio = null;
-        let ultimoEscaneo = null;
+// Elementos del DOM
+const csvFile = document.getElementById('csvFile');
+const csvStatus = document.getElementById('csvStatus');
+const webSalesFile = document.getElementById('webSalesFile');
+const webSalesStatus = document.getElementById('webSalesStatus');
+const importWebBtn = document.getElementById('importWebBtn');
+const importSummary = document.getElementById('importSummary');
+const searchInput = document.getElementById('searchInput');
+const resultsList = document.getElementById('resultsList');
+const manualRegisterBtn = document.getElementById('manualRegisterBtn');
+const exportBtn = document.getElementById('exportBtn');
+const clearBtn = document.getElementById('clearBtn');
+const registrosList = document.getElementById('registros-list');
+const tabs = document.querySelectorAll('.tab');
+const tabContents = document.querySelectorAll('.tab-content');
 
-        // Elementos del DOM
-        const csvFile = document.getElementById('csvFile');
-        const csvStatus = document.getElementById('csvStatus');
-        const webSalesFile = document.getElementById('webSalesFile');
-        const webSalesStatus = document.getElementById('webSalesStatus');
-        const importWebBtn = document.getElementById('importWebBtn');
-        const importSummary = document.getElementById('importSummary');
-        const searchInput = document.getElementById('searchInput');
-        const resultsList = document.getElementById('resultsList');
-        const manualRegisterBtn = document.getElementById('manualRegisterBtn');
-        const exportBtn = document.getElementById('exportBtn');
-        const clearBtn = document.getElementById('clearBtn');
-        const registrosList = document.getElementById('registros-list');
-        const tabs = document.querySelectorAll('.tab');
-        const tabContents = document.querySelectorAll('.tab-content');
-
-        // Eventos
-        csvFile.addEventListener('change', cargarSociosCSV);
+// Eventos
+csvFile.addEventListener('change', cargarSociosCSV);
         webSalesFile.addEventListener('change', cargarEntradasWeb);
         importWebBtn.addEventListener('click', importarEntradasWeb);
         searchInput.addEventListener('input', buscarSocios);
