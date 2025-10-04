@@ -465,52 +465,7 @@ const CONFIG_CLUBES = {
     }
 };
 
-    function aplicarTemaClub(clubConfig) {
-    // 1. Cambiar CSS variables
-    document.documentElement.style.setProperty('--primary', clubConfig.colores.primario);
-    document.documentElement.style.setProperty('--secondary', clubConfig.colores.secundario);
-    
-    // 2. Cambiar header con logo del club
-    const header = document.querySelector('header');
-    header.innerHTML = `
-        <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 15px; flex-wrap: wrap; gap: 15px;">
-            <!-- Logo del Club (izquierda) -->
-            <div style="display: flex; align-items: center; gap: 15px; flex: 1;">
-                <img src="${clubConfig.logo}" alt="${clubConfig.nombre}" style="height: 70px;">
-            </div>
-            
-            <!-- Título (centro) -->
-            <div style="text-align: center; flex: 2;">
-                <h1 style="margin: 0 0 5px 0; font-size: 28px; color: ${clubConfig.colores.primario};">Control de Acceso</h1>
-                <h2 style="margin: 0; font-size: 20px; color: ${clubConfig.colores.secundario}; font-weight: normal;">${clubConfig.nombre}</h2>
-            </div>
-            
-            <!-- Logo MB Ticket (derecha) -->
-            <div style="display: flex; align-items: center; gap: 10px; flex: 1; justify-content: flex-end;">
-                <div style="
-                    background: white;
-                    color: #FF4000;
-                    padding: 6px 12px;
-                    border-radius: 15px;
-                    font-size: 10px;
-                    font-weight: 600;
-                    box-shadow: 0 2px 8px rgba(255, 64, 0, 0.2);
-                    border: 1px solid #FF4000;
-                ">
-                    🎫 Desarrollado por MB Ticket
-                </div>
-            </div>
-        </div>
-    `;
-    
-    // 3. Cambiar título de la página
-    document.title = `Control Acceso - ${clubConfig.nombre}`;
-}
-
-
-
-
-        
+   
 function verificarAcceso() {
     const accesoGuardado = localStorage.getItem('acceso_autorizado');
     if (accesoGuardado === 'true') return true;
@@ -709,6 +664,36 @@ function mostrarPantallaBloqueo() {
     `;
 }
 
+function aplicarTemaClub(clubConfig) {
+    // 1. Cambiar CSS variables
+    document.documentElement.style.setProperty('--primary', clubConfig.colores.primario);
+    document.documentElement.style.setProperty('--secondary', clubConfig.colores.secundario);
+    
+    // 2. Cambiar header
+    const header = document.querySelector('header');
+    header.innerHTML = `
+        <div style="display: flex; align-items: center; justify-content: center; gap: 15px; margin-bottom: 10px;">
+            <img src="${clubConfig.logo}" alt="${clubConfig.nombre}" style="height: 50px;">
+            <img src="Logo MB-ticket.png" alt="MB Ticket" style="height: 40px; opacity: 0.8;">
+        </div>
+        <h1>Control de Acceso - ${clubConfig.nombre}</h1>
+        <div style="
+            background: ${clubConfig.colores.primario}; 
+            color: white; 
+            padding: 6px 12px; 
+            border-radius: 20px; 
+            font-size: 11px;
+            display: inline-block;
+            margin-top: 5px;
+        ">
+            🎫 Desarrollado por <strong>MB TICKET</strong>
+        </div>
+    `;
+    
+    // 3. Cambiar título de la página
+    document.title = `Control Acceso - ${clubConfig.nombre}`;
+}
+        
         
 // Agregar animación de shake
 const style = document.createElement('style');
