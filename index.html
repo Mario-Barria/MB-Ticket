@@ -383,23 +383,98 @@ function exportarRegistros() {
     a.click();
 }
 // 🔐 SISTEMA DE ACCESO PROFESIONAL MB TICKET
-const CONFIGURACION = {
-    contraseña: "club123",
-    nombreSistema: "Club Atlético River Plate", // ← Cambiar por cada cliente
-    desarrollador: "MB Ticket Solutions",
-    telefonoSoporte: "+54 9 11 1234-5678",
-    emailSoporte: "soporte@mbticket.com",
-    
-    // PERSONALIZACIÓN VISUAL POR CLIENTE
-    colores: {
-        primario: "#C8102E", // Rojo River
-        secundario: "#FFFFFF", // Blanco
-        acento: "#F0F0F0"
+const CONFIG_CLUBES = {
+    // Gimnasia Comodoro Rivadavia
+    "gimnasia123": {
+        nombre: "Gimnasia y Esgrima de Comodoro Rivadavia",
+        colores: {
+            primario: "#006400",    // Verde oscuro
+            secundario: "#32CD32",  // Verde lima
+            acento: "#90EE90"       // Verde claro
+        },
+        logo: "https://upload.wikimedia.org/wikipedia/commons/thumb/4/4a/Club_Gimnasia_y_Esgrima_logo.svg/240px-Club_Gimnasia_y_Esgrima_logo.svg.png",
+        contraseña: "gimnasia123"
     },
-    logo: "https://upload.wikimedia.org/wikipedia/commons/3/3f/Logo_River_Plate.png", // ← Cambiar logo por cliente
-    nombreClub: "River Plate"
+    
+    // River Plate
+    "river123": {
+        nombre: "Club Atlético River Plate", 
+        colores: {
+            primario: "#C8102E",
+            secundario: "#FFFFFF", 
+            acento: "#F0F0F0"
+        },
+        logo: "https://upload.wikimedia.org/wikipedia/commons/3/3f/Logo_River_Plate.png",
+        contraseña: "river123"
+    },
+    
+    // Boca Juniors
+    "boca123": {
+        nombre: "Club Atlético Boca Juniors",
+        colores: {
+            primario: "#005CA9",
+            secundario: "#FFD700",
+            acento: "#F8F9FA"
+        },
+        logo: "https://upload.wikimedia.org/wikipedia/commons/thumb/4/41/CABJ70.png/240px-CABJ70.png",
+        contraseña: "boca123"
+    }
 };
 
+        function mostrarPantallaAcceso() {
+    document.body.innerHTML = `
+        <div style="... fondo azul de MB Ticket ...">
+            <!-- LOGO MB TICKET SIEMPRE -->
+            <div style="margin-bottom: 25px;">
+                <div style="font-size: 48px; margin-bottom: 10px;">🎫</div>
+                <h1 style="margin: 0 0 5px 0; font-size: 24px; font-weight: 600;">MB TICKET</h1>
+                <p style="margin: 0; opacity: 0.8; font-size: 14px;">Sistema Profesional de Control de Acceso</p>
+            </div>
+            
+            <!-- FORMULARIO DE ACCESO -->
+            <div style="margin-bottom: 25px;">
+                <h2 style="...">🔒 Acceso al Sistema</h2>
+                <p style="...">Ingrese la contraseña proporcionada por su club</p>
+                
+                <input type="password" id="inputPassword" placeholder="Contraseña del club">
+                <button onclick="validarAcceso()">🚀 Ingresar al Sistema</button>
+            </div>
+            
+            <!-- INFO MB TICKET -->
+            <div style="...">
+                <p style="...">💼 <strong>MB Ticket Solutions</strong></p>
+                <p style="...">📞 +54 9 11 1234-5678</p>
+                <p style="...">✉️ soporte@mbticket.com</p>
+            </div>
+        </div>
+    `;
+}
+
+        function aplicarTemaClub(clubConfig) {
+    // 1. Cambiar CSS variables
+    document.documentElement.style.setProperty('--primary', clubConfig.colores.primario);
+    document.documentElement.style.setProperty('--secondary', clubConfig.colores.secundario);
+    
+    // 2. Cambiar header
+    document.querySelector('header').innerHTML = `
+        <div style="display: flex; align-items: center; justify-content: center; gap: 15px; margin-bottom: 10px;">
+            <img src="${clubConfig.logo}" alt="${clubConfig.nombre}" style="height: 50px;">
+            <img src="Logo MB-ticket.png" alt="MB Ticket" style="height: 40px; opacity: 0.8;">
+        </div>
+        <h1>Control de Acceso - ${clubConfig.nombre}</h1>
+        <div style="background: ${clubConfig.colores.primario}; color: white; padding: 6px 12px; border-radius: 20px; font-size: 11px;">
+            🎫 Desarrollado por <strong>MB TICKET</strong>
+        </div>
+    `;
+    
+    // 3. Cambiar título de la página
+    document.title = `Control Acceso - ${clubConfig.nombre}`;
+}
+
+
+
+
+        
 function verificarAcceso() {
     const accesoGuardado = localStorage.getItem('acceso_autorizado');
     if (accesoGuardado === 'true') return true;
@@ -523,13 +598,15 @@ let intentosRestantes = 3;
 function validarAcceso() {
     const input = document.getElementById('inputPassword');
     const contraseñaIngresada = input.value;
+    const clubConfig = CONFIG_CLUBES[contraseñaIngresada];
     
-    if (contraseñaIngresada === CONFIGURACION.contraseña) {
-        // Acceso concedido
+    if (clubConfig) {
+        // ✅ Acceso concedido - Guardar configuración del club
         localStorage.setItem('acceso_autorizado', 'true');
+        localStorage.setItem('club_config', JSON.stringify(clubConfig));
         location.reload();
     } else {
-        // Acceso denegado
+        // ❌ Acceso denegado
         intentosRestantes--;
         
         if (intentosRestantes > 0) {
@@ -596,6 +673,40 @@ function mostrarPantallaBloqueo() {
     `;
 }
 
+function aplicarTemaClub(clubConfig) {
+    // 1. Cambiar CSS variables
+    document.documentElement.style.setProperty('--primary', clubConfig.colores.primario);
+    document.documentElement.style.setProperty('--secondary', clubConfig.colores.secundario);
+    
+    // 2. Cambiar header
+    const header = document.querySelector('header');
+    header.innerHTML = `
+        <div style="display: flex; align-items: center; justify-content: center; gap: 15px; margin-bottom: 10px;">
+            <img src="${clubConfig.logo}" alt="${clubConfig.nombre}" style="height: 50px;">
+            <img src="Logo MB-ticket.png" alt="MB Ticket" style="height: 40px; opacity: 0.8;">
+        </div>
+        <h1>Control de Acceso - ${clubConfig.nombre}</h1>
+        <div style="
+            background: ${clubConfig.colores.primario}; 
+            color: white; 
+            padding: 6px 12px; 
+            border-radius: 20px; 
+            font-size: 11px;
+            display: inline-block;
+            margin-top: 5px;
+        ">
+            🎫 Desarrollado por <strong>MB TICKET</strong>
+        </div>
+    `;
+    
+    // 3. Cambiar título de la página
+    document.title = `Control Acceso - ${clubConfig.nombre}`;
+}
+
+
+
+
+        
 // Agregar animación de shake
 const style = document.createElement('style');
 style.textContent = `
@@ -610,6 +721,12 @@ document.head.appendChild(style);
 // Verificar acceso al cargar
 if (!verificarAcceso()) {
     throw new Error("Acceso no autorizado");
+}
+
+// Si tiene acceso, aplicar tema del club
+const clubConfig = JSON.parse(localStorage.getItem('club_config'));
+if (clubConfig) {
+    aplicarTemaClub(clubConfig);
 }
 
 // Variables globales (CONTINUACIÓN NORMAL)
