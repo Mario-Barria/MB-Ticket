@@ -432,7 +432,15 @@ button {
     <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 
     <script>
-function esHoyISO(fechaISO) {
+
+        // Función para limpiar DNI (quitar espacios, puntos, guiones)
+function limpiarDNI(dni) {
+    if (!dni) return '';
+    return dni.toString().replace(/\D/g, ''); // Solo números
+}
+        
+        
+        function esHoyISO(fechaISO) {
     return fechaISO.slice(0, 10) === new Date().toISOString().slice(0, 10);
 }
 
@@ -1108,7 +1116,7 @@ function importarAbonos() {
 
     entradasWeb.forEach(dni => {
         // Buscar si el DNI existe en la lista de socios
-        const socioEncontrado = socios.find(s => s.dni === dni.trim());
+        const socioEncontrado = socios.find(s => limpiarDNI(s.dni) === limpiarDNI(dni));
         
         if (!socioEncontrado) {
             noEncontrados++;
