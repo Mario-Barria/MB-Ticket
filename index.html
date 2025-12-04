@@ -755,6 +755,7 @@ if (clubConfig) {
 let socios = [];
 let registros = JSON.parse(localStorage.getItem('registros')) || [];
 let entradasWeb = JSON.parse(localStorage.getItem('entradasWeb')) || [];
+let abonosWeb = []; // Nueva variable para abonos
 let scanner;
 let selectedSocio = null;
 let ultimoEscaneo = null;
@@ -1045,7 +1046,7 @@ function cargarAbonos(event) {
                 abonosStatus.textContent = `✅ Abonos cargados: ${dnis.length}`;
                 abonosStatus.style.color = "green";
                 importAbonosBtn.disabled = false;
-                entradasWeb = dnis; // Reutilizamos la variable entradasWeb
+                abonosWeb = dnis; // Variable especifica
 
             } catch (error) {
                 abonosStatus.textContent = "❌ Error: " + error.message;
@@ -1095,13 +1096,14 @@ function cargarAbonos(event) {
 
 // Importar abonos al sistema (VERIFICANDO CONTRA SOCIOS)
 function importarAbonos() {
-    if (entradasWeb.length === 0) {
+    console.log("Importando abonos, cantidad:", abonosWeb.length);
+    
+    if (abonosWeb.length === 0) {
         mostrarResultado('error', '❌ Error', 'No hay abonos para importar');
         playErrorSound();
         return;
     }
 
-    // Verificar que se hayan cargado socios primero
     if (socios.length === 0) {
         mostrarResultado('error', '❌ Error', 'Primero debe cargar el listado de socios');
         playErrorSound();
@@ -1114,38 +1116,36 @@ function importarAbonos() {
     let noEncontrados = 0;
     let detallesNoEncontrados = [];
 
-    entradasWeb.forEach(dni => {
-        // Buscar si el DNI existe en la lista de socios
-        const socioEncontrado = socios.find(s => limpiarDNI(s.dni) === limpiarDNI(dni));
+    abonosWeb.forEach(dni => {
+        const socioEncontrado = socios.find(s => s.dni === dni);
         
         if (!socioEncontrado) {
             noEncontrados++;
             detallesNoEncontrados.push(dni);
-            return; // Saltar este DNI
+            return;
         }
 
-        // Verificar si ya está registrado hoy
-        const yaRegistrado = registros.some(r => 
-            r.dni === dni && 
-            esHoyISO(r.fecha)
-        );
+        const yaRegistrado = registros.some(r => r.dni === dni && esHoyISO(r.fecha));
 
         if (!yaRegistrado) {
             registros.push({
                 dni: dni,
-                nombre: socioEncontrado.nombre, // Usar nombre real del socio
+                nombre: socioEncontrado.nombre,
                 fecha: new Date().toISOString(),
                 tipo: "abono"
             });
             nuevosRegistros++;
+            console.log("Nuevo abono registrado:", socioEncontrado.nombre, dni);
         } else {
             duplicados++;
+            console.log("Abono duplicado:", socioEncontrado.nombre, dni);
         }
     });
 
     guardarRegistros();
     actualizarRegistros();
     
+       
     // Construir resumen detallado
     let resumenHTML = `
         <strong>Resumen de importación de abonos:</strong><br>
