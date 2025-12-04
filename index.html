@@ -810,13 +810,17 @@ logoutBtn.addEventListener('click', cerrarSesion);
                     const content = e.target.result;
                     const lines = content.split(/\r?\n/).filter(line => line.trim() !== '');
                     
-                    socios = lines.map(line => {
-                        const [nombre, apellido, dni] = line.split(';');
-                        return {
-                            nombre: `${nombre.trim()} ${apellido.trim()}`,
-                            dni: dni.trim()
-                        };
-                    });
+                    // En cargarSociosCSV, modifica esta parte:
+socios = lines.map(line => {
+    const [nombre, apellido, dni] = line.split(';');
+    // Limpiar DNI de caracteres no numéricos
+    const dniLimpio = dni.trim().replace(/\D/g, '');
+    
+    return {
+        nombre: `${nombre.trim()} ${apellido.trim()}`,
+        dni: dniLimpio  // Usar DNI limpio
+    };
+});
 
                     csvStatus.textContent = `✅ Socios cargados: ${socios.length}`;
                     csvStatus.style.color = "green";
@@ -1009,16 +1013,24 @@ function cargarAbonos(event) {
                 if (dniIndex === -1) throw new Error("No se encontró columna 'DNI'");
 
                 const dnis = lines.slice(1).map(line => {
-                    const cols = line.split(',').map(col => col.replace(/"/g, '').trim());
-                    let dni = cols[dniIndex];
-                    
-                    if (dni.includes(';')) {
-                        const parts = dni.split(';');
-                        dni = parts[parts.length - 1].trim();
-                    }
-                    
-                    return dni;
-                }).filter(Boolean);
+    const cols = line.split(',').map(col => col.replace(/"/g, '').trim());
+    let dni = cols[dniIndex];
+    
+    // Limpiar DNI de espacios y caracteres especiales
+    if (dni) {
+        // Extraer solo números
+        dni = dni.replace(/\D/g, '');
+        
+        // Si viene en formato "Nombre;Apellido;DNI"
+        if (dni.includes(';')) {
+            const parts = dni.split(';');
+            dni = parts[parts.length - 1].trim();
+            dni = dni.replace(/\D/g, '');
+        }
+    }
+    
+    return dni;
+}).filter(Boolean);
 
                 if (dnis.length === 0) throw new Error("No se encontró ningún DNI válido");
 
@@ -1073,7 +1085,7 @@ function cargarAbonos(event) {
     }
 }
 
-// Importar abonos al sistema
+// Importar abonos al sistema (VERIFICANDO CONTRA SOCIOS)
 function importarAbonos() {
     if (entradasWeb.length === 0) {
         mostrarResultado('error', '❌ Error', 'No hay abonos para importar');
@@ -1081,11 +1093,30 @@ function importarAbonos() {
         return;
     }
 
+    // Verificar que se hayan cargado socios primero
+    if (socios.length === 0) {
+        mostrarResultado('error', '❌ Error', 'Primero debe cargar el listado de socios');
+        playErrorSound();
+        return;
+    }
+
     const hoy = new Date().toLocaleDateString();
     let nuevosRegistros = 0;
     let duplicados = 0;
+    let noEncontrados = 0;
+    let detallesNoEncontrados = [];
 
     entradasWeb.forEach(dni => {
+        // Buscar si el DNI existe en la lista de socios
+        const socioEncontrado = socios.find(s => s.dni === dni.trim());
+        
+        if (!socioEncontrado) {
+            noEncontrados++;
+            detallesNoEncontrados.push(dni);
+            return; // Saltar este DNI
+        }
+
+        // Verificar si ya está registrado hoy
         const yaRegistrado = registros.some(r => 
             r.dni === dni && 
             esHoyISO(r.fecha)
@@ -1094,7 +1125,7 @@ function importarAbonos() {
         if (!yaRegistrado) {
             registros.push({
                 dni: dni,
-                nombre: "Abono/Invita",
+                nombre: socioEncontrado.nombre, // Usar nombre real del socio
                 fecha: new Date().toISOString(),
                 tipo: "abono"
             });
@@ -1107,18 +1138,39 @@ function importarAbonos() {
     guardarRegistros();
     actualizarRegistros();
     
-    abonosSummary.innerHTML = `
-        <strong>Resumen de importación:</strong><br>
-        ✅ Nuevos abonos: ${nuevosRegistros}<br>
-        ⚠️ Duplicados: ${duplicados}<br>
-        📅 Total registros hoy: ${registros.filter(r => esHoy(r.fecha)).length}
+    // Construir resumen detallado
+    let resumenHTML = `
+        <strong>Resumen de importación de abonos:</strong><br>
+        ✅ Nuevos abonos registrados: ${nuevosRegistros}<br>
+        ⚠️ Duplicados (ya estaban): ${duplicados}<br>
     `;
     
-    mostrarResultado('success', '✅ Importación completada', `
-        Se importaron ${nuevosRegistros} abonos<br>
-        ${duplicados} ya estaban registrados
-    `);
-    playSuccessSound();
+    if (noEncontrados > 0) {
+        resumenHTML += `❌ DNIs no encontrados en socios: ${noEncontrados}<br>`;
+        if (noEncontrados <= 5) {
+            resumenHTML += `<small>DNIs no encontrados: ${detallesNoEncontrados.join(', ')}</small>`;
+        }
+    }
+    
+    resumenHTML += `<br>📅 Total registros hoy: ${registros.filter(r => esHoy(r.fecha)).length}`;
+    
+    abonosSummary.innerHTML = resumenHTML;
+    
+    // Mostrar resultado
+    if (noEncontrados > 0) {
+        mostrarResultado('warning', '⚠️ Importación parcial', `
+            Se importaron ${nuevosRegistros} abonos<br>
+            ${duplicados} ya estaban registrados<br>
+            <strong>${noEncontrados} DNIs no encontrados en socios</strong>
+        `);
+        playErrorSound();
+    } else {
+        mostrarResultado('success', '✅ Importación completada', `
+            Se importaron ${nuevosRegistros} abonos<br>
+            ${duplicados} ya estaban registrados
+        `);
+        playSuccessSound();
+    }
 }
 
         
