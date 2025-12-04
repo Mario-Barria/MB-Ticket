@@ -1270,13 +1270,18 @@ function importarAbonos() {
             );
 
             if (yaRegistrado) {
-                mostrarResultado('error', '❌ Ya ingresó hoy', `
-                    ${socio.nombre}<br>
-                    DNI: ${socio.dni}
-                `);
-                playErrorSound();
-                return;
-            }
+    const registroExistente = registros.find(r => r.dni === socio.dni && esHoyISO(r.fecha));
+    const tipoTexto = registroExistente?.tipo === 'web' ? ' (VENTA WEB)' : 
+                     registroExistente?.tipo === 'abono' ? ' (ABONADO)' : 
+                     registroExistente?.tipo === 'manual' ? ' (MANUAL)' : '';
+    
+    mostrarResultado('error', '❌ Ya ingresó hoy', `
+        ${socio.nombre}<br>
+        DNI: ${socio.dni}${tipoTexto}
+    `);
+    playErrorSound();
+    return;
+}
 
             // Registrar el ingreso
             registros.push({
@@ -1311,14 +1316,17 @@ function importarAbonos() {
     );
 
     if (yaIngresado) {
-        mostrarResultado('error', '❌ Ya ingresó hoy', `
-            ${selectedSocio.nombre}<br>
-            DNI: ${selectedSocio.dni}<br>
-            Hora: ${new Date(yaIngresado.fecha).toLocaleTimeString()}
-        `);
-        playErrorSound();
-        return;
-    }
+    const tipoTexto = yaIngresado.tipo === 'web' ? ' (VENTA WEB)' : 
+                     yaIngresado.tipo === 'abono' ? ' (ABONADO)' : 
+                     yaIngresado.tipo === 'manual' ? ' (MANUAL)' : '';
+    
+    mostrarResultado('error', '❌ Ya ingresó hoy', `
+        ${selectedSocio.nombre}<br>
+        DNI: ${selectedSocio.dni}${tipoTexto}
+    `);
+    playErrorSound();
+    return;
+}
 
     const registro = {
         dni: selectedSocio.dni,
