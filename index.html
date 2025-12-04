@@ -340,6 +340,7 @@ button {
         <div class="tabs">
             <div class="tab active" data-tab="ingreso">Registro de Ingresos</div>
             <div class="tab" data-tab="importar">Importar Entradas Web</div>
+            <div class="tab" data-tab="abonos">Abonos/Invita</div>
         </div>
 
         <!-- Pestaña de Ingreso -->
@@ -387,6 +388,29 @@ button {
                 <p id="importSummary" style="margin-top: 15px;"></p>
             </div>
         </div>
+        <!-- Pestaña de Abonos/Invita -->
+<div id="abonos" class="tab-content">
+    <div class="panel">
+        <h3 class="panel-title">Registro de Abonos/Invita</h3>
+        <div class="file-upload">
+            <label for="abonosFile">Seleccionar listado de abonos (Excel/CSV)</label>
+            <input type="file" id="abonosFile" accept=".csv,.xlsx,.xls">
+            <p id="abonosStatus" class="file-status">Esperando archivo de abonos...</p>
+        </div>
+        <button id="importAbonosBtn" disabled>Registrar Abonos</button>
+        <p id="abonosSummary" style="margin-top: 15px;"></p>
+        
+        <div style="margin-top: 20px; padding: 15px; background: #f8f9fa; border-radius: 5px; border-left: 4px solid #FF4000;">
+            <h4 style="margin-top: 0; color: #666;">📝 Instrucciones:</h4>
+            <p style="margin: 5px 0; font-size: 14px;">
+                • Subir archivo con columna <strong>DNI</strong><br>
+                • Se registrarán como tipo <strong>"Abono"</strong><br>
+                • Si ya ingresaron hoy, se mostrará como duplicado<br>
+                • Ideal para abonos, invitaciones, cortesías
+            </p>
+        </div>
+    </div>
+</div>
 
         <div class="panel">
     <h3 class="panel-title">Registros de Hoy</h3>
@@ -743,6 +767,12 @@ const registrosList = document.getElementById('registros-list');
 const tabs = document.querySelectorAll('.tab');
 const tabContents = document.querySelectorAll('.tab-content');
 
+// Elementos nuevos para abonos
+const abonosFile = document.getElementById('abonosFile');
+const abonosStatus = document.getElementById('abonosStatus');
+const importAbonosBtn = document.getElementById('importAbonosBtn');
+const abonosSummary = document.getElementById('abonosSummary');
+
 // Eventos
         csvFile.addEventListener('change', cargarSociosCSV);
         webSalesFile.addEventListener('change', cargarEntradasWeb);
@@ -751,6 +781,9 @@ const tabContents = document.querySelectorAll('.tab-content');
         manualRegisterBtn.addEventListener('click', registrarManual);
         exportBtn.addEventListener('click', exportarRegistros);
         clearBtn.addEventListener('click', limpiarRegistros);
+        // Eventos para abonos
+        abonosFile.addEventListener('change', cargarAbonos);
+        importAbonosBtn.addEventListener('click', importarAbonos);
         // NUEVO: Botón cerrar sesión
 const logoutBtn = document.getElementById('logoutBtn');
 logoutBtn.addEventListener('click', cerrarSesion);
@@ -953,6 +986,142 @@ function cargarEntradasWeb(event) {
             playSuccessSound();
         }
 
+// Cargar abonos desde Excel/CSV
+function cargarAbonos(event) {
+    const file = event.target.files[0];
+    if (!file) return;
+
+    const extension = file.name.split('.').pop().toLowerCase();
+    const reader = new FileReader();
+
+    if (extension === 'csv') {
+        reader.onload = function(e) {
+            try {
+                let content = e.target.result;
+                if (content.charCodeAt(0) === 0xFEFF) {
+                    content = content.slice(1);
+                }
+
+                const lines = content.split(/\r?\n/).filter(line => line.trim() !== '');
+                const rawHeaders = lines[0].split(',').map(h => h.replace(/"/g, '').replace(/\uFEFF/g, '').trim().toLowerCase());
+
+                const dniIndex = rawHeaders.findIndex(h => h.includes('dni'));
+                if (dniIndex === -1) throw new Error("No se encontró columna 'DNI'");
+
+                const dnis = lines.slice(1).map(line => {
+                    const cols = line.split(',').map(col => col.replace(/"/g, '').trim());
+                    let dni = cols[dniIndex];
+                    
+                    if (dni.includes(';')) {
+                        const parts = dni.split(';');
+                        dni = parts[parts.length - 1].trim();
+                    }
+                    
+                    return dni;
+                }).filter(Boolean);
+
+                if (dnis.length === 0) throw new Error("No se encontró ningún DNI válido");
+
+                abonosStatus.textContent = `✅ Abonos cargados: ${dnis.length}`;
+                abonosStatus.style.color = "green";
+                importAbonosBtn.disabled = false;
+                entradasWeb = dnis; // Reutilizamos la variable entradasWeb
+
+            } catch (error) {
+                abonosStatus.textContent = "❌ Error: " + error.message;
+                abonosStatus.style.color = "red";
+                console.error("Error al procesar abonos:", error);
+            }
+        };
+        reader.readAsText(file);
+    } else {
+        // Excel
+        reader.onload = function(e) {
+            try {
+                const data = new Uint8Array(e.target.result);
+                const workbook = XLSX.read(data, { type: 'array' });
+                const firstSheet = workbook.Sheets[workbook.SheetNames[0]];
+                const jsonData = XLSX.utils.sheet_to_json(firstSheet);
+
+                const firstRow = jsonData[0] || {};
+                const dniKey = Object.keys(firstRow).find(k => k.toLowerCase().includes('dni'));
+                if (!dniKey) throw new Error("No se encontró columna 'DNI'");
+
+                const dnis = jsonData.map(item => {
+                    let dni = item[dniKey]?.toString().trim();
+                    if (dni && dni.includes(';')) {
+                        const parts = dni.split(';');
+                        dni = parts[parts.length - 1].trim();
+                    }
+                    return dni;
+                }).filter(Boolean);
+
+                if (dnis.length === 0) throw new Error("No se encontró ningún DNI válido");
+
+                abonosStatus.textContent = `✅ Abonos cargados: ${dnis.length}`;
+                abonosStatus.style.color = "green";
+                importAbonosBtn.disabled = false;
+                entradasWeb = dnis;
+
+            } catch (error) {
+                abonosStatus.textContent = "❌ Error: " + error.message;
+                abonosStatus.style.color = "red";
+                console.error("Error al procesar abonos:", error);
+            }
+        };
+        reader.readAsArrayBuffer(file);
+    }
+}
+
+// Importar abonos al sistema
+function importarAbonos() {
+    if (entradasWeb.length === 0) {
+        mostrarResultado('error', '❌ Error', 'No hay abonos para importar');
+        playErrorSound();
+        return;
+    }
+
+    const hoy = new Date().toLocaleDateString();
+    let nuevosRegistros = 0;
+    let duplicados = 0;
+
+    entradasWeb.forEach(dni => {
+        const yaRegistrado = registros.some(r => 
+            r.dni === dni && 
+            esHoyISO(r.fecha)
+        );
+
+        if (!yaRegistrado) {
+            registros.push({
+                dni: dni,
+                nombre: "Abono/Invita",
+                fecha: new Date().toISOString(),
+                tipo: "abono"
+            });
+            nuevosRegistros++;
+        } else {
+            duplicados++;
+        }
+    });
+
+    guardarRegistros();
+    actualizarRegistros();
+    
+    abonosSummary.innerHTML = `
+        <strong>Resumen de importación:</strong><br>
+        ✅ Nuevos abonos: ${nuevosRegistros}<br>
+        ⚠️ Duplicados: ${duplicados}<br>
+        📅 Total registros hoy: ${registros.filter(r => esHoy(r.fecha)).length}
+    `;
+    
+    mostrarResultado('success', '✅ Importación completada', `
+        Se importaron ${nuevosRegistros} abonos<br>
+        ${duplicados} ya estaban registrados
+    `);
+    playSuccessSound();
+}
+
+        
         // Buscar socios (autocompletado)
         function buscarSocios() {
             const query = searchInput.value.trim().toLowerCase();
@@ -1125,7 +1294,7 @@ function cargarEntradasWeb(event) {
                     <div class="registro-item">
                         <strong>${r.fecha}</strong><br>
                         ${r.nombre} (DNI: ${r.dni})<br>
-                        <small>Tipo: ${r.tipo === 'web' ? 'Entrada Web' : r.tipo === 'manual' ? 'Registro Manual' : 'Carnet'}</small>
+                        <small>Tipo: ${r.tipo === 'web' ? 'Entrada Web' : r.tipo === 'abono' ? 'Abono/Invita' : r.tipo === 'manual' ? 'Registro Manual' : 'Carnet'}</small>
                     </div>
                 `).join('')
                 : '<p>No hay registros aún.</p>';
