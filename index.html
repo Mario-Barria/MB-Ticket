@@ -1249,7 +1249,7 @@ function importarAbonos() {
             window.scanner = new Html5Qrcode("reader");
             window.scanner.start(
                 { facingMode: "user" },
-                { fps: 10, qrbox: 400 },
+                { fps: 10, qrbox: 600 },
                 (decodedText) => {
                     procesarQR(decodedText);
                 },
