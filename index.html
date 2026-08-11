@@ -1246,35 +1246,75 @@ function importarAbonos() {
 
         // Iniciar escáner
         function iniciarEscaneo() {
-    if (window.scanner && window.scanner.isScanning) return;
-    
-    window.scanner = new Html5Qrcode("reader");
-    window.scanner.start(
-        { 
-            facingMode: "environment",
-            // Forzar mejor calidad de imagen
-            deviceId: { exact: null }
-        },
-        { 
-            fps: 10, 
-            qrbox: 400,
-            // Aumentar el tamaño de la imagen para mejor detección
-            aspectRatio: 1.0
-        },
-        (decodedText) => {
-            procesarQR(decodedText);
-        },
-        (error) => {
-            // Ignorar errores comunes (sin detener escáner)
-            if (error !== "NotFoundException" && !error.includes("No MultiFormat")) {
-                console.log("Error escáner:", error);
+    // Si ya está escaneando, no hacer nada
+    if (window.scanner && window.scanner.isScanning) {
+        console.log("Escáner ya activo");
+        return;
+    }
+
+    // Asegurar que el contenedor esté visible
+    const readerContainer = document.getElementById('reader');
+    if (readerContainer) {
+        readerContainer.style.display = 'block';
+        readerContainer.style.minHeight = '400px';
+        readerContainer.style.height = '70vh';
+        console.log("Contenedor reader visible");
+    }
+
+    // Si ya existe un escáner, detenerlo primero
+    if (window.scanner) {
+        window.scanner.stop().then(() => {
+            window.scanner.clear();
+            iniciarNuevoScanner();
+        }).catch(err => {
+            console.log("Error al detener escáner anterior:", err);
+            iniciarNuevoScanner();
+        });
+    } else {
+        iniciarNuevoScanner();
+    }
+}
+
+function iniciarNuevoScanner() {
+    try {
+        window.scanner = new Html5Qrcode("reader");
+        
+        const config = {
+            fps: 10,
+            qrbox: { width: 300, height: 300 } // Tamaño fijo para mejor visualización
+        };
+
+        window.scanner.start(
+            { facingMode: "environment" },
+            config,
+            (decodedText) => {
+                procesarQR(decodedText);
+            },
+            (error) => {
+                // Solo mostrar errores importantes
+                if (error && !error.includes("NotFoundException") && !error.includes("No MultiFormat")) {
+                    console.log("Error escáner:", error);
+                }
             }
-        }
-    ).then(() => {
-        console.log("Escáner activo");
-    }).catch(err => {
-        console.error("Error al iniciar:", err);
-    });
+        ).then(() => {
+            console.log("✅ Escáner activo correctamente");
+        }).catch(err => {
+            console.error("❌ Error al iniciar escáner:", err);
+            // Si falla, mostrar un mensaje en el contenedor
+            const readerContainer = document.getElementById('reader');
+            if (readerContainer) {
+                readerContainer.innerHTML = `
+                    <div style="color: white; text-align: center; padding: 50px;">
+                        <p>❌ No se pudo acceder a la cámara</p>
+                        <p style="font-size: 14px;">Verifica que la cámara esté conectada y los permisos sean aceptados</p>
+                        <button onclick="iniciarEscaneo()" style="background: #FF4000; color: white; border: none; padding: 10px 20px; border-radius: 5px; margin-top: 20px;">Reintentar</button>
+                    </div>
+                `;
+            }
+        });
+    } catch (e) {
+        console.error("Error al instanciar Html5Qrcode:", e);
+    }
 }
 
         // Procesar código QR escaneado
