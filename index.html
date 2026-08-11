@@ -432,7 +432,21 @@ button {
     <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 
     <script>
+// Forzar pantalla completa al cargar
+document.addEventListener('DOMContentLoaded', function() {
+    if (document.documentElement.requestFullscreen) {
+        document.documentElement.requestFullscreen().catch(() => {});
+    }
+});
 
+// También al hacer clic en cualquier lugar (para tablets que lo bloquean)
+document.addEventListener('click', function() {
+    if (!document.fullscreenElement) {
+        document.documentElement.requestFullscreen().catch(() => {});
+    }
+});
+
+        
         // Función para limpiar DNI (quitar espacios, puntos, guiones)
 function limpiarDNI(dni) {
     if (!dni) return '';
