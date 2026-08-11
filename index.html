@@ -1229,7 +1229,7 @@ function importarAbonos() {
             
             window.scanner = new Html5Qrcode("reader");
             window.scanner.start(
-                { facingMode: "environment" },
+                { facingMode: "user" },
                 { fps: 10, qrbox: 250 },
                 (decodedText) => {
                     procesarQR(decodedText);
