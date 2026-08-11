@@ -1268,57 +1268,83 @@ function importarAbonos() {
 
         // Procesar código QR escaneado
         function procesarQR(qrContent) {
-            // Usar temporizador para permitir re-escaneo después de 1.5 segundos
-            const ahora = Date.now();
-            if (window.ultimoEscaneo && (ahora - window.ultimoEscaneo < 1500)) return;
-            window.ultimoEscaneo = ahora;
+    // Usar temporizador para permitir re-escaneo después de 1.5 segundos
+    const ahora = Date.now();
+    if (window.ultimoEscaneo && (ahora - window.ultimoEscaneo < 1500)) return;
+    window.ultimoEscaneo = ahora;
 
-            const dni = qrContent.split('=')[1] || qrContent;
-            const socio = socios.find(s => s.dni === dni.trim());
-            
-            if (!socio) {
-                mostrarResultado('error', '❌ No registrado', `DNI: ${dni}`);
-                playErrorSound();
-                return;
-            }
+    // --- MOSTRAR EN CONSOLA QUÉ SE ESCANEÓ ---
+    console.log("📷 QR Escaneado (crudo):", qrContent);
 
-            const hoy = new Date().toLocaleDateString();
-            const yaRegistrado = registros.some(r => 
-                r.dni === socio.dni && 
-                esHoyISO(r.fecha)
-            );
+    // 1. Limpiar el contenido del QR para quedarnos solo con el DNI
+    let dni = qrContent;
+    // Si el QR tiene formato "DNI=12345678", extraemos la parte después del '='
+    if (dni.includes('=')) {
+        dni = dni.split('=')[1];
+    }
+    // Eliminamos cualquier espacio en blanco al inicio y final
+    dni = dni.trim();
+    // --- MOSTRAR EN CONSOLA EL DNI PROCESADO ---
+    console.log("🔍 DNI procesado para búsqueda:", `"${dni}"`);
 
-            if (yaRegistrado) {
-    const registroExistente = registros.find(r => r.dni === socio.dni && esHoyISO(r.fecha));
-    const tipoTexto = registroExistente?.tipo === 'web' ? ' (VENTA WEB)' : 
-                     registroExistente?.tipo === 'abono' ? ' (ABONADO)' : 
-                     registroExistente?.tipo === 'manual' ? ' (MANUAL)' : '';
+    // 2. Buscar el socio en la lista, pero intentando varias formas
+    let socio = socios.find(s => s.dni === dni);
+
+    // Si no se encuentra, intentar buscar eliminando puntos, guiones o espacios
+    if (!socio) {
+        const dniLimpio = dni.replace(/[.-]/g, '');
+        socio = socios.find(s => s.dni === dniLimpio);
+        if (socio) console.log("✅ Encontrado tras limpiar caracteres especiales:", socio.dni);
+    }
+
+    // Si no se encuentra, intentar buscar como parte de un número más grande
+    if (!socio) {
+        socio = socios.find(s => s.dni.includes(dni) || dni.includes(s.dni));
+        if (socio) console.log("✅ Encontrado por coincidencia parcial:", socio.dni);
+    }
     
-    mostrarResultado('error', '❌ Ya ingresó hoy', `
-        ${socio.nombre}<br>
-        DNI: ${socio.dni}${tipoTexto}
-    `);
-    playErrorSound();
-    return;
-}
+    // --- MOSTRAR EN CONSOLA SI SE ENCONTRÓ O NO ---
+    console.log("👤 Socio encontrado:", socio ? socio.nombre : "NO ENCONTRADO");
 
-            // Registrar el ingreso
-            registros.push({
-                dni: socio.dni,
-                nombre: socio.nombre,
-                fecha: new Date().toISOString(),
-                tipo: "carnet"
-            });
-            
-            guardarRegistros();
-            actualizarRegistros();
-            
-            mostrarResultado('success', '✅ Registrado', `
-                ${socio.nombre}<br>
-                DNI: ${socio.dni}
-            `);
-            playSuccessSound();
-        }
+    if (!socio) {
+        mostrarResultado('error', '❌ No registrado', `DNI: ${dni}`);
+        playErrorSound();
+        return;
+    }
+
+    // Verificar si ya ingresó hoy
+    const hoy = new Date().toLocaleDateString();
+    const yaRegistrado = registros.some(r => 
+        r.dni === socio.dni && 
+        esHoyISO(r.fecha)
+    );
+
+    if (yaRegistrado) {
+        mostrarResultado('error', '❌ Ya ingresó hoy', `
+            ${socio.nombre}<br>
+            DNI: ${socio.dni}
+        `);
+        playErrorSound();
+        return;
+    }
+
+    // Registrar el ingreso
+    registros.push({
+        dni: socio.dni,
+        nombre: socio.nombre,
+        fecha: new Date().toISOString(),
+        tipo: "carnet"
+    });
+    
+    guardarRegistros();
+    actualizarRegistros();
+    
+    mostrarResultado('success', '✅ Registrado', `
+        ${socio.nombre}<br>
+        DNI: ${socio.dni}
+    `);
+    playSuccessSound();
+}
 
         // Registrar manualmente
         function registrarManual() {
