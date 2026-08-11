@@ -1244,27 +1244,36 @@ function importarAbonos() {
 
         // Iniciar escáner
         function iniciarEscaneo() {
-            if (window.scanner && window.scanner.isScanning) return;
-            
-            window.scanner = new Html5Qrcode("reader");
-            window.scanner.start(
-                { facingMode: "user" },
-                { fps: 10, qrbox: 600 },
-                (decodedText) => {
-                    procesarQR(decodedText);
-                },
-                (error) => {
-                    // Ignorar errores comunes (sin detener escáner)
-                    if (error !== "NotFoundException") {
-                        console.log("Error escáner:", error);
-                    }
-                }
-            ).then(() => {
-                console.log("Escáner activo");
-            }).catch(err => {
-                console.error("Error al iniciar:", err);
-            });
+    if (window.scanner && window.scanner.isScanning) return;
+    
+    window.scanner = new Html5Qrcode("reader");
+    window.scanner.start(
+        { 
+            facingMode: "environment",
+            // Forzar mejor calidad de imagen
+            deviceId: { exact: null }
+        },
+        { 
+            fps: 10, 
+            qrbox: 400,
+            // Aumentar el tamaño de la imagen para mejor detección
+            aspectRatio: 1.0
+        },
+        (decodedText) => {
+            procesarQR(decodedText);
+        },
+        (error) => {
+            // Ignorar errores comunes (sin detener escáner)
+            if (error !== "NotFoundException" && !error.includes("No MultiFormat")) {
+                console.log("Error escáner:", error);
+            }
         }
+    ).then(() => {
+        console.log("Escáner activo");
+    }).catch(err => {
+        console.error("Error al iniciar:", err);
+    });
+}
 
         // Procesar código QR escaneado
         function procesarQR(qrContent) {
