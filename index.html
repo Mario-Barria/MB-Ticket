@@ -83,15 +83,17 @@
         }
         
         #reader {
-            width: 100%;
-    max-width: 100%;  /* <-- Antes era 500px */
-    height: 70vh;     /* <-- Usa 70% de la altura de la pantalla */
+    width: 100%;
+    max-width: 100%;
+    min-height: 400px;  /* <-- Forzar altura mínima visible */
+    height: 70vh;       /* <-- Ocupar 70% de la pantalla */
+    background: #000;   /* <-- Fondo negro para ver el contenedor */
     margin: 10px auto;
-    background: white;
     padding: 10px;
     border-radius: 8px;
-            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
-        }
+    position: relative;
+    overflow: hidden;
+}
         
         #result {
   display: none;
