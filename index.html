@@ -3,1656 +3,1316 @@
 <head>
     <link rel="manifest" href="manifest.json?v=2">
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Control de Acceso - Estadio</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <meta name="theme-color" content="#000000">
+    <title>Control de Acceso - MB Ticket</title>
     <script src="https://unpkg.com/html5-qrcode@2.3.4/html5-qrcode.min.js"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&family=Fira+Code:wght@500&display=swap" rel="stylesheet">
     <style>
         :root {
-            --primary: #2c3e50;
-            --secondary: #2980b9;
-            --success: #27ae60;
-            --danger: #e74c3c;
-            --info: #3498db;
-            --light: #ecf0f1;
-            --dark: #2c3e50;
+            --bg: #000000;
+            --glass: rgba(30, 30, 36, 0.92);
+            --glass-soft: rgba(30, 30, 36, 0.75);
+            --border: #4a4a5a;
+            --accent: #00aaff;
+            --text: #e0e0e0;
+            --text2: #9a9aab;
+            --ok: #4caf50;
+            --warn: #ffc107;
+            --err: #f44336;
+            --club: #00aaff;
         }
-        
-        body {
-    /* Oculta la barra de navegación en Android */
-    -webkit-tap-highlight-color: transparent;
-}
-        body {
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+
+        * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+
+        html, body {
             margin: 0;
-            padding: 20px;
-            background-color: #f5f7fa;
-            color: var(--dark);
+            padding: 0;
+            height: 100%;
+            overflow: hidden;
+            overscroll-behavior: none;
+            background: var(--bg);
+            color: var(--text);
+            font-family: 'Inter', 'Segoe UI', Tahoma, sans-serif;
         }
-        
-        .container {
-            max-width: 1000px;
-            margin: 0 auto;
+
+        /* ============ KIOSK ============ */
+        #kiosk {
+            display: flex;
+            flex-direction: column;
+            height: 100vh;
+            height: 100dvh;
         }
-        
-        header {
+
+        /* Barra superior */
+        #topbar {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 12px;
+            padding: 8px 14px;
+            background: var(--glass);
+            border-bottom: 1px solid var(--border);
+            backdrop-filter: blur(8px);
+            z-index: 20;
+            min-height: 58px;
+        }
+        #topbar .brand {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            min-width: 0;
+        }
+        #clubLogo { height: 40px; width: auto; object-fit: contain; }
+        #clubNombre {
+            font-weight: 800;
+            font-size: clamp(14px, 2.4vw, 20px);
+            color: var(--club);
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            text-shadow: 1px 1px 5px rgba(0,0,0,0.7);
+        }
+        #topbar .right {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            flex-shrink: 0;
+        }
+        #reloj {
+            font-family: 'Fira Code', monospace;
+            font-size: 14px;
+            color: var(--text2);
+        }
+        #contadorHoy {
+            background: var(--club);
+            color: #000;
+            font-weight: 800;
+            font-size: clamp(13px, 2vw, 16px);
+            padding: 6px 14px;
+            border-radius: 999px;
+            white-space: nowrap;
+        }
+        .icon-btn {
+            width: 42px;
+            height: 42px;
+            border-radius: 10px;
+            border: 1px solid var(--border);
+            background: var(--glass-soft);
+            color: var(--text);
+            font-size: 19px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            transition: border-color .2s, background .2s;
+        }
+        .icon-btn:active { background: var(--border); }
+
+        /* Escenario de cámara */
+        #stage {
+            position: relative;
+            flex: 1;
+            background: #000;
+            overflow: hidden;
+        }
+        #reader {
+            position: absolute;
+            inset: 0;
+            width: 100%;
+            height: 100%;
+        }
+        #reader video {
+            width: 100% !important;
+            height: 100% !important;
+            object-fit: cover;
+        }
+        /* Ocultar la interfaz interna de la librería */
+        #reader__scan_region img,
+        #reader__scan_region > div,
+        #reader__dashboard_section,
+        #reader__status_span,
+        #reader__header { display: none !important; }
+
+        /* Marco de escaneo propio */
+        #scanFrame {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            width: min(62vmin, 520px);
+            height: min(62vmin, 520px);
+            transform: translate(-50%, -50%);
+            pointer-events: none;
+            z-index: 5;
+        }
+        .corner {
+            position: absolute;
+            width: 56px;
+            height: 56px;
+            border: 5px solid var(--accent);
+            filter: drop-shadow(0 0 6px rgba(0, 170, 255, 0.55));
+        }
+        .corner.tl { top: 0; left: 0; border-right: none; border-bottom: none; border-radius: 14px 0 0 0; }
+        .corner.tr { top: 0; right: 0; border-left: none; border-bottom: none; border-radius: 0 14px 0 0; }
+        .corner.bl { bottom: 0; left: 0; border-right: none; border-top: none; border-radius: 0 0 0 14px; }
+        .corner.br { bottom: 0; right: 0; border-left: none; border-top: none; border-radius: 0 0 14px 0; }
+
+        #scanline {
+            position: absolute;
+            left: 6%;
+            width: 88%;
+            height: 4px;
+            border-radius: 4px;
+            background: linear-gradient(90deg, transparent, #00aaff, #bc52ee, transparent);
+            box-shadow: 0 0 18px 4px rgba(0, 170, 255, 0.45), 0 0 40px 8px rgba(188, 82, 238, 0.25);
+            animation: sweep 2.4s ease-in-out infinite;
+        }
+        @keyframes sweep {
+            0%, 100% { top: 8%; }
+            50% { top: 90%; }
+        }
+        @media (prefers-reduced-motion: reduce) {
+            #scanline { animation: none; top: 50%; }
+        }
+
+        #hintPill {
+            position: absolute;
+            bottom: 22px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: var(--glass);
+            border: 1px solid var(--border);
+            backdrop-filter: blur(8px);
+            padding: 12px 26px;
+            border-radius: 999px;
+            font-size: clamp(15px, 2.4vw, 20px);
+            font-weight: 600;
+            color: var(--text);
+            white-space: nowrap;
+            z-index: 6;
+            box-shadow: 0 6px 24px rgba(0,0,0,0.5);
+        }
+
+        /* Barra inferior: último registro */
+        #bottombar {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+            padding: 10px 16px;
+            background: var(--glass);
+            border-top: 1px solid var(--border);
+            backdrop-filter: blur(8px);
+            font-size: clamp(13px, 2vw, 16px);
+            color: var(--text2);
+            min-height: 46px;
+            z-index: 20;
+        }
+        #ultimoRegistro { font-weight: 600; color: var(--text); }
+
+        /* ============ RESULTADO A PANTALLA COMPLETA ============ */
+        #resultOverlay {
+            position: fixed;
+            inset: 0;
+            z-index: 1000;
+            display: none;
+            align-items: center;
+            justify-content: center;
+            flex-direction: column;
             text-align: center;
-            margin-bottom: 20px;
+            padding: 30px;
+            backdrop-filter: blur(10px);
         }
-        
-        .logo {
-            height: 80px;
-            margin-bottom: 10px;
+        #resultOverlay.show { display: flex; animation: popIn .25s cubic-bezier(0.25, 0.46, 0.45, 0.94); }
+        @keyframes popIn {
+            from { opacity: 0; transform: scale(0.94); }
+            to { opacity: 1; transform: scale(1); }
         }
-        
+        #resultOverlay.success { background: rgba(20, 83, 45, 0.92); }
+        #resultOverlay.error   { background: rgba(110, 20, 20, 0.92); }
+        #resultOverlay.warning { background: rgba(120, 85, 5, 0.92); }
+        #resultIcon { line-height: 1; margin-bottom: 18px; }
+        #resultIcon svg { width: min(28vmin, 160px); height: min(28vmin, 160px); }
+        #resultTitle {
+            font-size: clamp(30px, 7vmin, 56px);
+            font-weight: 800;
+            color: #fff;
+            margin: 0 0 12px 0;
+            text-shadow: 1px 1px 8px rgba(0,0,0,0.5);
+        }
+        #resultDetail {
+            font-size: clamp(20px, 4.5vmin, 34px);
+            font-weight: 600;
+            color: rgba(255,255,255,0.95);
+            line-height: 1.35;
+        }
+        #resultDetail .mono { font-family: 'Fira Code', monospace; }
+
+        /* ============ PANEL DE ADMINISTRACIÓN ============ */
+        #adminOverlay {
+            position: fixed;
+            inset: 0;
+            z-index: 500;
+            background: rgba(0, 0, 0, 0.7);
+            backdrop-filter: blur(6px);
+            display: none;
+            align-items: center;
+            justify-content: center;
+            padding: 16px;
+        }
+        #adminOverlay.open { display: flex; }
+        #adminPanel {
+            background: var(--glass);
+            border: 1px solid var(--border);
+            border-radius: 18px;
+            width: 100%;
+            max-width: 860px;
+            max-height: 92vh;
+            max-height: 92dvh;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+            box-shadow: 0 12px 50px rgba(0,0,0,0.6);
+        }
+        #adminHeader {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 14px 20px;
+            border-bottom: 1px solid var(--border);
+        }
+        #adminHeader h2 { margin: 0; font-size: 18px; font-weight: 800; color: var(--text); }
+        #adminBody { overflow-y: auto; padding: 16px 20px 24px; }
+        #adminBody::-webkit-scrollbar { width: 8px; }
+        #adminBody::-webkit-scrollbar-track { background: transparent; }
+        #adminBody::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.15); border-radius: 4px; }
+
+        .tabs { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 16px; }
+        .tab {
+            padding: 10px 16px;
+            cursor: pointer;
+            background: var(--glass-soft);
+            border: 1px solid var(--border);
+            border-radius: 999px;
+            font-size: 14px;
+            font-weight: 600;
+            color: var(--text2);
+            transition: border-color .2s, color .2s;
+            user-select: none;
+        }
+        .tab.active {
+            color: #000;
+            background: var(--accent);
+            border-color: var(--accent);
+        }
+        .tab-content { display: none; }
+        .tab-content.active { display: block; }
+
         .panel {
-            background: white;
-            padding: 15px;
-            border-radius: 8px;
-            margin-bottom: 20px;
-            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+            background: rgba(255,255,255,0.04);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 16px;
+            margin-bottom: 14px;
         }
-        
         .panel-title {
-            margin-top: 0;
-            color: var(--primary);
-            border-bottom: 1px solid #eee;
-            padding-bottom: 10px;
+            margin: 0 0 12px 0;
+            font-size: 15px;
+            font-weight: 800;
+            color: var(--accent);
         }
-        
-        .file-upload {
-            margin-bottom: 15px;
-        }
-        
         .file-upload label {
             display: inline-block;
-            background: var(--secondary);
-            color: white;
-            padding: 10px 15px;
-            border-radius: 5px;
+            background: var(--accent);
+            color: #000;
+            padding: 12px 18px;
+            border-radius: 10px;
             cursor: pointer;
-            margin-right: 10px;
+            font-weight: 700;
+            font-size: 14px;
         }
-        
-        .file-upload input {
-            display: none;
-        }
-        
-        .file-status {
-            margin-top: 10px;
-            font-weight: bold;
-        }
-        
-        #reader {
-    width: 100%;
-    max-width: 100%;
-    min-height: 400px;  /* <-- Forzar altura mínima visible */
-    height: 70vh;       /* <-- Ocupar 70% de la pantalla */
-    background: #000;   /* <-- Fondo negro para ver el contenedor */
-    margin: 10px auto;
-    padding: 10px;
-    border-radius: 8px;
-    position: relative;
-    overflow: hidden;
-}
+        .file-upload input { display: none; }
+        .file-status { margin-top: 10px; font-weight: 600; font-size: 14px; color: var(--text2); }
 
-<div id="reader"></div>
-<button id="reiniciarCamara" style="
-    background: #FF4000; 
-    color: white; 
-    border: none; 
-    padding: 15px 20px; 
-    border-radius: 10px; 
-    font-size: 18px; 
-    font-weight: bold; 
-    margin: 15px auto; 
-    display: block; 
-    width: 80%; 
-    max-width: 300px;
-    box-shadow: 0 4px 8px rgba(255,64,0,0.3);
-    cursor: pointer;
-">
-    📷 FORZAR CÁMARA
-</button>
-
-        
-        #result {
-  display: none;
-  margin: 0;
-  padding: 25px;
-  border-radius: 12px;
-  text-align: center;
-  max-width: 80%;
-  position: fixed;
-  top: 50%;
-  left: 50%;
-  transform: translate(-50%, -50%);
-  z-index: 10000;
-  box-shadow: 0 8px 30px rgba(0,0,0,0.4);
-  font-size: 18px;
-  font-weight: bold;
-  backdrop-filter: blur(5px);
-}
-
-@media (max-width: 768px) {
-  #result {
-    max-width: 90%;
-    font-size: 16px;
-    padding: 20px;
-  }
-}
-        
-        .success {
-            background-color: #d4edda;
-            color: #155724;
-            border: 1px solid #c3e6cb;
-        }
-        
-        .error {
-            background-color: #f8d7da;
-            color: #721c24;
-            border: 1px solid #f5c6cb;
-        }
-        
-        .info {
-            background-color: #d1ecf1;
-            color: #0c5460;
-            border: 1px solid #bee5eb;
-        }
-        
-        .icon {
-            font-size: 40px;
-            margin-bottom: 10px;
-        }
-        
-        button {
-            padding: 12px 20px;
-            color: white !important;
-            border: none;
-            border-radius: 5px;
-            cursor: pointer;
-            margin: 10px auto;
-            font-weight: bold;
+        button.action {
             width: 100%;
-            max-width: 300px;
-            display: block;
-            transition: all 0.3s;
+            padding: 14px;
+            border: none;
+            border-radius: 10px;
+            font-size: 16px;
+            font-weight: 700;
+            cursor: pointer;
+            margin-top: 10px;
+            color: #fff;
+            transition: opacity .2s, transform .1s;
         }
-        
-        button:hover {
-            opacity: 0.9;
-            transform: translateY(-2px);
-        }
-        
-        #exportBtn {
-            background: var(--secondary);
-        }
-        
-        #clearBtn {
-            background: var(--danger);
-        }
-        
-        #manualRegisterBtn {
-            background: var(--success);
-        }
-        
-        #importWebBtn {
-            background: var(--info);
-        }
-        
-        .search-box {
-            margin-bottom: 15px;
-        }
-        
-        .search-results {
-            position: relative;
-        }
-        
+        button.action:active { transform: scale(0.98); }
+        button.action:disabled { opacity: 0.4; cursor: not-allowed; }
+        #importWebBtn { background: var(--accent); color: #000; }
+        #importAbonosBtn { background: var(--warn); color: #000; }
+        #manualRegisterBtn { background: var(--ok); }
+        #exportBtn { background: var(--accent); color: #000; }
+        #clearBtn { background: var(--err); }
+        #logoutBtn { background: transparent; border: 1px solid var(--err); color: var(--err); }
+
         #searchInput {
             width: 100%;
-            padding: 10px;
-            margin-bottom: 10px;
-            border: 1px solid #ddd;
-            border-radius: 5px;
+            padding: 14px;
+            font-size: 16px;
+            border: 1px solid var(--border);
+            border-radius: 10px;
+            background: rgba(0,0,0,0.4);
+            color: var(--text);
+            margin-bottom: 8px;
         }
-        
+        #searchInput:focus { outline: 2px solid var(--accent); border-color: var(--accent); }
+        .search-results { position: relative; }
         #resultsList {
             position: absolute;
             width: 100%;
-            max-height: 200px;
+            max-height: 220px;
             overflow-y: auto;
-            background: white;
-            border: 1px solid #ddd;
-            border-radius: 5px;
-            z-index: 1000;
+            background: #1e1e24;
+            border: 1px solid var(--border);
+            border-radius: 10px;
+            z-index: 50;
             display: none;
-            box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+            box-shadow: 0 8px 30px rgba(0,0,0,0.5);
         }
-        
-        .result-item {
-            padding: 10px;
-            cursor: pointer;
-            border-bottom: 1px solid #eee;
-        }
-        
-        .result-item:hover {
-            background-color: #f5f5f5;
-        }
-        
-        .result-item strong {
-            color: var(--secondary);
-        }
-        
-        #registros-list {
-            max-height: 300px;
-            overflow-y: auto;
-        }
-        
+        .result-item { padding: 12px; cursor: pointer; border-bottom: 1px solid var(--border); font-size: 15px; }
+        .result-item:hover { background: rgba(0,170,255,0.12); }
+        .result-item strong { color: var(--accent); }
+
+        #registros-list { max-height: 320px; overflow-y: auto; }
+        #registros-list::-webkit-scrollbar { width: 8px; }
+        #registros-list::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.15); border-radius: 4px; }
         .registro-item {
-            padding: 10px 0;
-            border-bottom: 1px solid #eee;
-        }
-        
-        .registro-item:last-child {
-            border-bottom: none;
-        }
-        
-        .tabs {
+            padding: 10px 4px;
+            border-bottom: 1px solid var(--border);
+            font-size: 14px;
             display: flex;
-            margin-bottom: 20px;
-            border-bottom: 1px solid #ddd;
+            justify-content: space-between;
+            gap: 10px;
+            align-items: baseline;
         }
-        
-        .tab {
-            padding: 10px 20px;
-            cursor: pointer;
-            background: #f1f1f1;
-            margin-right: 5px;
-            border-radius: 5px 5px 0 0;
+        .registro-item:last-child { border-bottom: none; }
+        .registro-item .hora { font-family: 'Fira Code', monospace; color: var(--text2); font-size: 12px; white-space: nowrap; }
+        .tag { font-size: 11px; font-weight: 700; padding: 2px 8px; border-radius: 999px; margin-left: 6px; }
+        .tag.carnet { background: rgba(0,170,255,0.2); color: var(--accent); }
+        .tag.web { background: rgba(76,175,80,0.2); color: var(--ok); }
+        .tag.abono { background: rgba(255,193,7,0.2); color: var(--warn); }
+        .tag.manual { background: rgba(255,255,255,0.12); color: var(--text2); }
+
+        .instrucciones {
+            margin-top: 14px;
+            padding: 12px 14px;
+            background: rgba(0,170,255,0.08);
+            border: 1px solid rgba(0,170,255,0.25);
+            border-radius: 10px;
+            font-size: 13px;
+            color: var(--text2);
+            line-height: 1.6;
         }
-        
-        .tab.active {
-            background: var(--secondary);
-            color: white;
-        }
-        
-        .tab-content {
-            display: none;
-        }
-        
-        .tab-content.active {
-            display: block;
-        }
-        
-        @media (max-width: 768px) {
-            .container {
-                padding: 10px;
-            }
-            
-            .panel {
-                padding: 10px;
-            }
-            
-            button {
-                padding: 10px 15px;
-            }
-        }
-        /* Estilos responsive mejorados */
-@media (max-width: 768px) {
-    header > div {
-        flex-direction: column;
-        text-align: center;
-    }
-    
-    header > div > div {
-        flex: none !important;
-        justify-content: center !important;
-    }
-    
-    .logo {
-        height: 60px !important;
-    }
-    
-    h1 {
-        font-size: 24px !important;
-    }
-    
-    h2 {
-        font-size: 18px !important;
-    }
-}
-
-/* Mejorar contraste de colores */
-.panel {
-    border-left: 4px solid var(--primary);
-}
-
-button {
-    border-left: 3px solid var(--primary);
-}
-    </style>
-</head>
-<body>
-    <div class="container">
-        <header>
-    <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 15px; flex-wrap: wrap; gap: 15px;">
-        <!-- Logo del Club (izquierda) -->
-        <div style="display: flex; align-items: center; gap: 15px; flex: 1;">
-            <img src="Logo MB-ticket.png" alt="Logo Club" class="logo" style="height: 70px;">
-        </div>
-        
-        <!-- Título (centro) -->
-        <div style="text-align: center; flex: 2;">
-            <h1 style="margin: 0 0 5px 0; font-size: 28px; color: var(--primary);">Control de Acceso</h1>
-            <h2 style="margin: 0; font-size: 20px; color: var(--secondary); font-weight: normal;" id="nombreClub">Estadio</h2>
-        </div>
-        
-        <!-- Logo MB Ticket (derecha) -->
-        <div style="display: flex; align-items: center; gap: 10px; flex: 1; justify-content: flex-end;">
-            <div style="
-                background: white;
-                color: #FF4000;
-                padding: 6px 12px;
-                border-radius: 15px;
-                font-size: 10px;
-                font-weight: 600;
-                box-shadow: 0 2px 8px rgba(255, 64, 0, 0.2);
-                border: 1px solid #FF4000;
-            ">
-                🎫 MB TICKET
-            </div>
-        </div>
-    </div>
-</header>
-
-        <div class="tabs">
-            <div class="tab active" data-tab="ingreso">Registro de Ingresos</div>
-            <div class="tab" data-tab="importar">Importar Entradas Web</div>
-            <div class="tab" data-tab="abonos">Abonos/Invita</div>
-        </div>
-
-        <!-- Pestaña de Ingreso -->
-        <div id="ingreso" class="tab-content active">
-            <div class="panel">
-                <h3 class="panel-title">Carga de Socios</h3>
-                <div class="file-upload">
-                    <label for="csvFile">Seleccionar listado de socios (CSV)</label>
-                    <input type="file" id="csvFile" accept=".csv">
-                    <p id="csvStatus" class="file-status">Esperando archivo CSV...</p>
-                </div>
-            </div>
-
-            <div class="panel">
-                <h3 class="panel-title">Búsqueda Manual</h3>
-                <div class="search-box">
-                    <div class="search-results">
-                        <input type="text" id="searchInput" placeholder="Buscar por DNI o nombre (mínimo 3 caracteres)">
-                        <div id="resultsList"></div>
-                    </div>
-                    <button id="manualRegisterBtn" disabled>Registrar Ingreso Manual</button>
-                </div>
-            </div>
-
-            <div class="panel">
-                <h3 class="panel-title">Escaneo de Carnets</h3>
-                <div id="reader"></div>
-                <div id="result">
-                    <div id="icon" class="icon"></div>
-                    <div id="message"></div>
-                </div>
-            </div>
-        </div>
-
-        <!-- Pestaña de Importación -->
-        <div id="importar" class="tab-content">
-            <div class="panel">
-                <h3 class="panel-title">Importar Entradas Web</h3>
-                <div class="file-upload">
-                    <label for="webSalesFile">Seleccionar archivo de ventas web (Excel/CSV)</label>
-                    <input type="file" id="webSalesFile" accept=".csv,.xlsx,.xls">
-                    <p id="webSalesStatus" class="file-status">Esperando archivo de ventas web...</p>
-                </div>
-                <button id="importWebBtn" disabled>Importar Entradas</button>
-                <p id="importSummary" style="margin-top: 15px;"></p>
-            </div>
-        </div>
-        <!-- Pestaña de Abonos/Invita -->
-<div id="abonos" class="tab-content">
-    <div class="panel">
-        <h3 class="panel-title">Registro de Abonos/Invita</h3>
-        <div class="file-upload">
-            <label for="abonosFile">Seleccionar listado de abonos (Excel/CSV)</label>
-            <input type="file" id="abonosFile" accept=".csv,.xlsx,.xls">
-            <p id="abonosStatus" class="file-status">Esperando archivo de abonos...</p>
-        </div>
-        <button id="importAbonosBtn" disabled style="background: #17a2b8; color: white; border: none; padding: 12px 20px; border-radius: 5px; cursor: pointer; margin: 10px auto; font-weight: bold; width: 100%; max-width: 300px; display: block;">Registrar Abonos</button>
-        <p id="abonosSummary" style="margin-top: 15px;"></p>
-        
-        <div style="margin-top: 20px; padding: 15px; background: #f8f9fa; border-radius: 5px; border-left: 4px solid #FF4000;">
-            <h4 style="margin-top: 0; color: #666;">📝 Instrucciones:</h4>
-            <p style="margin: 5px 0; font-size: 14px;">
-                • Subir archivo con columna <strong>DNI</strong><br>
-                • Se registrarán como tipo <strong>"Abono"</strong><br>
-                • Si ya ingresaron hoy, se mostrará como duplicado<br>
-                • Ideal para abonos, invitaciones, cortesías
-            </p>
-        </div>
-    </div>
-</div>
-
-        <div class="panel">
-    <h3 class="panel-title">Registros de Hoy</h3>
-    <div id="registros-list">
-        <p>No hay registros aún.</p>
-    </div>
-    <button id="exportBtn">Generar Informe</button>
-    <button id="clearBtn">Limpiar Registros</button>
-    <!-- BOTÓN DE CERRAR SESIÓN -->
-    <button id="logoutBtn" style="background: #FF4000; margin-top: 20px;">🔓 Cerrar Sesión</button>
-</div>
-    </div>
-
-    <!-- Sonidos locales para evitar problemas en móviles -->
-    <audio id="successSound" src="success.mp3" preload="auto"></audio>
-    <audio id="errorSound" src="error.mp3" preload="auto"></audio>
-
-    <!-- Biblioteca para leer Excel -->
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
-
-    <script>
-// Pantalla completa solo al hacer clic (evita errores en cargas automáticas)
-document.addEventListener('click', function() {
-    if (!document.fullscreenElement && document.documentElement.requestFullscreen) {
-        document.documentElement.requestFullscreen().catch(() => {});
-    }
-}, { once: true }); // Solo la primera vez
-
-        
-        // Función para limpiar DNI (quitar espacios, puntos, guiones)
-function limpiarDNI(dni) {
-    if (!dni) return '';
-    return dni.toString().replace(/\D/g, ''); // Solo números
-}
-        
-        
-        function esHoyISO(fechaISO) {
-    return fechaISO.slice(0, 10) === new Date().toISOString().slice(0, 10);
-}
-
-function exportarRegistros() {
-    const hoy = new Date().toISOString().slice(0, 10);
-    const registrosHoy = registros.filter(r => r.fecha.slice(0, 10) === hoy);
-
-    let csv = "Fecha,Nombre,DNI,Tipo\n";
-    registrosHoy.forEach(r => {
-        csv += `"\${r.fecha}","\${r.nombre}","\${r.dni}","\${r.tipo}"\n`;
-    });
-
-    const blob = new Blob([csv], { type: 'text/csv' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `registros_\${hoy}.csv`;
-    a.click();
-}
-// 🔐 SISTEMA DE ACCESO PROFESIONAL MB TICKET
-const CONFIG_CLUBES = {
-    // Gimnasia Comodoro Rivadavia
-    "gimnasia123": {
-    nombre: "Gimnasia y Esgrima de Comodoro Rivadavia",
-    colores: {
-        primario: "#006400",    // Verde oscuro
-        secundario: "#228B22",  // Verde forest (mejor contraste)
-        acento: "#90EE90"
-    },
-    logo: "https://upload.wikimedia.org/wikipedia/en/1/10/Club_Gimnasia_y_Esgrima_logo.svg",
-    contraseña: "gimnasia123"
-},
-    
-    // River Plate
-    "river123": {
-        nombre: "Club Atlético River Plate", 
-        colores: {
-            primario: "#C8102E",
-            secundario: "#FFFFFF", 
-            acento: "#F0F0F0"
-        },
-        logo: "https://upload.wikimedia.org/wikipedia/commons/3/3f/Logo_River_Plate.png",
-        contraseña: "river123"
-    },
-    
-    // Boca Juniors
-    "boca123": {
-        nombre: "Club Atlético Boca Juniors",
-        colores: {
-            primario: "#005CA9",
-            secundario: "#FFD700",
-            acento: "#F8F9FA"
-        },
-        logo: "https://upload.wikimedia.org/wikipedia/commons/thumb/4/41/CABJ70.png/240px-CABJ70.png",
-        contraseña: "boca123"
-    }
-};
-
-   
-function verificarAcceso() {
-    const accesoGuardado = localStorage.getItem('acceso_autorizado');
-    if (accesoGuardado === 'true') return true;
-    
-    mostrarPantallaAcceso();
-    return false;
-}
-
-function mostrarPantallaAcceso() {
-    document.body.innerHTML = `
-        <div style="
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            height: 100vh;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            color: white;
-            text-align: center;
-            padding: 20px;
-        ">
-            <div style="
-                background: rgba(255,255,255,0.15);
-                padding: 40px 30px;
-                border-radius: 20px;
-                backdrop-filter: blur(15px);
-                border: 1px solid rgba(255,255,255,0.2);
-                max-width: 400px;
-                width: 90%;
-            ">
-                <!-- Logo MB Ticket -->
-                <div style="margin-bottom: 25px;">
-                    <div style="font-size: 48px; margin-bottom: 10px;">🎫</div>
-                    <h1 style="margin: 0 0 5px 0; font-size: 24px; font-weight: 600;">MB TICKET</h1>
-                    <p style="margin: 0; opacity: 0.8; font-size: 14px;">Sistema Profesional de Control de Acceso</p>
-                </div>
-                
-                <!-- Formulario de acceso -->
-                <div style="margin-bottom: 25px;">
-                    <h2 style="margin: 0 0 15px 0; font-size: 18px; font-weight: 500;">🔒 Acceso Restringido</h2>
-                    <p style="margin: 0 0 20px 0; opacity: 0.9; font-size: 14px; line-height: 1.4;">
-                        Sistema profesional de control de acceso para clubes
-                    </p>
-                    
-                    <input type="password" 
-                           id="inputPassword" 
-                           placeholder="Ingrese la contraseña de acceso" 
-                           style="
-                                width: 100%;
-                                padding: 12px 15px;
-                                border: none;
-                                border-radius: 10px;
-                                background: rgba(255,255,255,0.9);
-                                color: #333;
-                                font-size: 16px;
-                                margin-bottom: 15px;
-                                box-sizing: border-box;
-                           ">
-                    
-                    <button onclick="validarAcceso()" 
-                            style="
-                                width: 100%;
-                                background: linear-gradient(45deg, #FF6B6B, #FF8E53);
-                                color: white;
-                                border: none;
-                                padding: 12px;
-                                border-radius: 10px;
-                                font-weight: bold;
-                                font-size: 16px;
-                                cursor: pointer;
-                                transition: all 0.3s;
-                            "
-                            onmouseover="this.style.transform='translateY(-2px)';"
-                            onmouseout="this.style.transform='translateY(0)';">
-                        🚀 Ingresar al Sistema
-                    </button>
-                </div>
-                
-                <!-- Información de soporte -->
-                <div style="
-                    border-top: 1px solid rgba(255,255,255,0.3);
-                    padding-top: 20px;
-                    margin-top: 20px;
-                ">
-                    <p style="margin: 0 0 8px 0; font-size: 12px; opacity: 0.7;">
-    💼 <strong>MB Ticket Solutions</strong>
-</p>
-<p style="margin: 0 0 5px 0; font-size: 11px; opacity: 0.6;">
-    📞 +54 9 297 403-8368
-</p>
-<p style="margin: 0; font-size: 11px; opacity: 0.6;">
-    ✉️ soporte@mbticket.com
-</p>
-                </div>
-                
-                <!-- Contador de intentos -->
-                <div id="intentosInfo" style="
-                    margin-top: 15px;
-                    font-size: 12px;
-                    opacity: 0.8;
-                ">Intentos restantes: 3</div>
-            </div>
-        </div>
-    `;
-    
-    // Focus en el input de contraseña
-    setTimeout(() => {
-        document.getElementById('inputPassword').focus();
-    }, 100);
-    
-    // Permitir enviar con Enter
-    document.getElementById('inputPassword').addEventListener('keypress', function(e) {
-        if (e.key === 'Enter') {
-            validarAcceso();
-        }
-    });
-}
-
-let intentosRestantes = 3;
-
-function validarAcceso() {
-    const input = document.getElementById('inputPassword');
-    const contraseñaIngresada = input.value;
-    const clubConfig = CONFIG_CLUBES[contraseñaIngresada];
-    
-    if (clubConfig) {
-        // ✅ Acceso concedido - Guardar configuración del club
-        localStorage.setItem('acceso_autorizado', 'true');
-        localStorage.setItem('club_config', JSON.stringify(clubConfig));
-        location.reload();
-    } else {
-        // ❌ Acceso denegado
-        intentosRestantes--;
-        
-        if (intentosRestantes > 0) {
-            document.getElementById('intentosInfo').innerHTML = 
-                `❌ Contraseña incorrecta. Intentos restantes: ${intentosRestantes}`;
-            input.value = '';
-            input.focus();
-            
-            // Efecto de vibración
-            input.style.animation = 'shake 0.5s';
-            setTimeout(() => input.style.animation = '', 500);
-        } else {
-            mostrarPantallaBloqueo();
-        }
-    }
-}
-
-function mostrarPantallaBloqueo() {
-    document.body.innerHTML = `
-        <div style="
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            height: 100vh;
-            background: linear-gradient(135deg, #ff6b6b 0%, #c44569 100%);
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            color: white;
-            text-align: center;
-            padding: 20px;
-        ">
-            <div style="
-                background: rgba(255,255,255,0.15);
-                padding: 40px 30px;
-                border-radius: 20px;
-                backdrop-filter: blur(15px);
-                border: 1px solid rgba(255,255,255,0.2);
-                max-width: 400px;
-                width: 90%;
-            ">
-                <div style="font-size: 60px; margin-bottom: 20px;">🚫</div>
-                <h1 style="margin: 0 0 15px 0; font-size: 24px;">Acceso Bloqueado</h1>
-                <p style="margin: 0 0 25px 0; opacity: 0.9; line-height: 1.5;">
-                    Se han agotado los intentos de acceso.<br>
-                    Por favor, contacte al administrador del sistema.
-                </p>
-                
-                <div style="
-                    border-top: 1px solid rgba(255,255,255,0.3);
-                    padding-top: 20px;
-                    margin-top: 20px;
-                ">
-                    <p style="margin: 0 0 8px 0; font-size: 12px; opacity: 0.7;">
-    💼 <strong>MB Ticket Solutions</strong>
-</p>
-<p style="margin: 0 0 5px 0; font-size: 11px; opacity: 0.6;">
-    📞 +54 9 297 403-8368
-</p>
-<p style="margin: 0; font-size: 11px; opacity: 0.6;">
-    ✉️ soporte@mbticket.com
-</p>
-                </div>
-            </div>
-        </div>
-    `;
-}
-
-function aplicarTemaClub(clubConfig) {
-    // 1. Cambiar CSS variables
-    document.documentElement.style.setProperty('--primary', clubConfig.colores.primario);
-    document.documentElement.style.setProperty('--secondary', clubConfig.colores.secundario);
-    
-    // 2. Cambiar header
-    const header = document.querySelector('header');
-    header.innerHTML = `
-        <div style="display: flex; align-items: center; justify-content: center; gap: 15px; margin-bottom: 10px;">
-            <img src="${clubConfig.logo}" alt="${clubConfig.nombre}" style="height: 50px;">
-            <img src="Logo MB-ticket.png" alt="MB Ticket" style="height: 40px; opacity: 0.8;">
-        </div>
-        <h1>Control de Acceso - ${clubConfig.nombre}</h1>
-        <div style="
-            background: ${clubConfig.colores.primario}; 
-            color: white; 
-            padding: 6px 12px; 
-            border-radius: 20px; 
-            font-size: 11px;
-            display: inline-block;
-            margin-top: 5px;
-        ">
-            🎫 Desarrollado por <strong>MB TICKET</strong>
-        </div>
-    `;
-    
-    // 3. Cambiar título de la página
-    document.title = `Control Acceso - ${clubConfig.nombre}`;
-}
-        
-        
-// Agregar animación de shake
-const style = document.createElement('style');
-style.textContent = `
-    @keyframes shake {
-        0%, 100% { transform: translateX(0); }
-        25% { transform: translateX(-5px); }
-        75% { transform: translateX(5px); }
-    }
-`;
-document.head.appendChild(style);
-
-// Verificar acceso al cargar
-if (!verificarAcceso()) {
-    throw new Error("Acceso no autorizado");
-}
-
-// Si tiene acceso, aplicar tema del club
-const clubConfig = JSON.parse(localStorage.getItem('club_config'));
-if (clubConfig) {
-    aplicarTemaClub(clubConfig);
-}
-
-// Variables globales (CONTINUACIÓN NORMAL)
-let socios = [];
-let registros = JSON.parse(localStorage.getItem('registros')) || [];
-let entradasWeb = JSON.parse(localStorage.getItem('entradasWeb')) || [];
-let abonosWeb = []; // Nueva variable para abonos
-let scanner;
-let selectedSocio = null;
-let ultimoEscaneo = null;
-
-// Elementos del DOM
-const csvFile = document.getElementById('csvFile');
-const csvStatus = document.getElementById('csvStatus');
-const webSalesFile = document.getElementById('webSalesFile');
-const webSalesStatus = document.getElementById('webSalesStatus');
-const importWebBtn = document.getElementById('importWebBtn');
-const importSummary = document.getElementById('importSummary');
-const searchInput = document.getElementById('searchInput');
-const resultsList = document.getElementById('resultsList');
-const manualRegisterBtn = document.getElementById('manualRegisterBtn');
-const exportBtn = document.getElementById('exportBtn');
-const clearBtn = document.getElementById('clearBtn');
-const registrosList = document.getElementById('registros-list');
-const tabs = document.querySelectorAll('.tab');
-const tabContents = document.querySelectorAll('.tab-content');
-
-// Elementos nuevos para abonos
-const abonosFile = document.getElementById('abonosFile');
-const abonosStatus = document.getElementById('abonosStatus');
-const importAbonosBtn = document.getElementById('importAbonosBtn');
-const abonosSummary = document.getElementById('abonosSummary');
-
-// Eventos
-        csvFile.addEventListener('change', cargarSociosCSV);
-        webSalesFile.addEventListener('change', cargarEntradasWeb);
-        importWebBtn.addEventListener('click', importarEntradasWeb);
-        searchInput.addEventListener('input', buscarSocios);
-        manualRegisterBtn.addEventListener('click', registrarManual);
-        exportBtn.addEventListener('click', exportarRegistros);
-        clearBtn.addEventListener('click', limpiarRegistros);
-        // Eventos para abonos
-        abonosFile.addEventListener('change', cargarAbonos);
-        importAbonosBtn.addEventListener('click', importarAbonos);
-        // NUEVO: Botón cerrar sesión
-const logoutBtn = document.getElementById('logoutBtn');
-logoutBtn.addEventListener('click', cerrarSesion);
-
-        // Tabs
-        tabs.forEach(tab => {
-            tab.addEventListener('click', () => {
-                tabs.forEach(t => t.classList.remove('active'));
-                tabContents.forEach(c => c.classList.remove('active'));
-                
-                tab.classList.add('active');
-                document.getElementById(tab.dataset.tab).classList.add('active');
-            });
-        });
-
-        // Cargar socios desde CSV
-        function cargarSociosCSV(event) {
-            const file = event.target.files[0];
-            if (!file) return;
-
-            const reader = new FileReader();
-            reader.onload = function(e) {
-                try {
-                    const content = e.target.result;
-                    const lines = content.split(/\r?\n/).filter(line => line.trim() !== '');
-                    
-                    // En cargarSociosCSV, modifica esta parte:
-socios = lines.map(line => {
-    const [nombre, apellido, dni] = line.split(';');
-    // Limpiar DNI de caracteres no numéricos
-    const dniLimpio = dni.trim().replace(/\D/g, '');
-    
-    return {
-        nombre: `${nombre.trim()} ${apellido.trim()}`,
-        dni: dniLimpio  // Usar DNI limpio
-    };
-});
-
-                    csvStatus.textContent = `✅ Socios cargados: ${socios.length}`;
-                    csvStatus.style.color = "green";
-                    exportBtn.disabled = false;
-                    iniciarEscaneo();
-
-                } catch (error) {
-                    csvStatus.textContent = "❌ Error: El archivo debe tener formato: Nombre;Apellido;DNI";
-                    csvStatus.style.color = "red";
-                    console.error("Error al procesar CSV:", error);
-                }
-            };
-            
-            reader.onerror = () => {
-                csvStatus.textContent = "❌ Error al leer el archivo";
-                csvStatus.style.color = "red";
-            };
-            
-            reader.readAsText(file);
-        }
-
-        // Cargar entradas web desde Excel/CSV - VERSIÓN CORREGIDA
-function cargarEntradasWeb(event) {
-    const file = event.target.files[0];
-    if (!file) return;
-
-    const extension = file.name.split('.').pop().toLowerCase();
-    const reader = new FileReader();
-
-    if (extension === 'csv') {
-        reader.onload = function(e) {
-            try {
-                let content = e.target.result;
-
-                // Eliminar BOM si existe
-                if (content.charCodeAt(0) === 0xFEFF) {
-                    content = content.slice(1);
-                }
-
-                const lines = content.split(/\r?\n/).filter(line => line.trim() !== '');
-                const rawHeaders = lines[0].split(',').map(h => h.replace(/"/g, '').replace(/\uFEFF/g, '').trim().toLowerCase());
-
-                // Buscar índice de la columna que contenga "dni"
-                const dniIndex = rawHeaders.findIndex(h => h.includes('dni'));
-
-                if (dniIndex === -1) {
-                    throw new Error("No se encontró ninguna columna que contenga 'DNI'");
-                }
-
-                const dnis = lines.slice(1).map(line => {
-                    const cols = line.split(',').map(col => col.replace(/"/g, '').trim());
-                    let dni = cols[dniIndex];
-                    
-                    // ✅ LIMPIAR DNI si viene en formato "Nombre;Apellido;DNI"
-                    if (dni.includes(';')) {
-                        const parts = dni.split(';');
-                        dni = parts[parts.length - 1].trim(); // Tomar solo la última parte
-                    }
-                    
-                    return dni;
-                }).filter(Boolean);
-
-                if (dnis.length === 0) throw new Error("No se encontró ningún DNI válido");
-
-                webSalesStatus.textContent = `✅ Entradas web cargadas: ${dnis.length}`;
-                webSalesStatus.style.color = "green";
-                importWebBtn.disabled = false;
-                entradasWeb = dnis;
-            } catch (error) {
-                webSalesStatus.textContent = "❌ Error: " + error.message;
-                webSalesStatus.style.color = "red";
-                console.error("Error al procesar CSV:", error);
-            }
-        };
-
-        reader.readAsText(file);
-    } else {
-        // Excel
-        reader.onload = function(e) {
-            try {
-                const data = new Uint8Array(e.target.result);
-                const workbook = XLSX.read(data, { type: 'array' });
-                const firstSheet = workbook.Sheets[workbook.SheetNames[0]];
-                const jsonData = XLSX.utils.sheet_to_json(firstSheet);
-
-                // Buscar campo que contenga 'dni'
-                const firstRow = jsonData[0] || {};
-                const dniKey = Object.keys(firstRow).find(k => k.toLowerCase().includes('dni'));
-
-                if (!dniKey) throw new Error("No se encontró ninguna columna que contenga 'DNI'");
-
-                const dnis = jsonData.map(item => {
-                    let dni = item[dniKey]?.toString().trim();
-                    
-                    // ✅ LIMPIAR DNI si viene en formato "Nombre;Apellido;DNI"
-                    if (dni && dni.includes(';')) {
-                        const parts = dni.split(';');
-                        dni = parts[parts.length - 1].trim(); // Tomar solo la última parte
-                    }
-                    
-                    return dni;
-                }).filter(Boolean);
-
-                if (dnis.length === 0) throw new Error("No se encontró ningún DNI válido");
-
-                webSalesStatus.textContent = `✅ Entradas web cargadas: ${dnis.length}`;
-                webSalesStatus.style.color = "green";
-                importWebBtn.disabled = false;
-                entradasWeb = dnis;
-            } catch (error) {
-                webSalesStatus.textContent = "❌ Error: " + error.message;
-                webSalesStatus.style.color = "red";
-                console.error("Error al procesar Excel:", error);
-            }
-        };
-
-        reader.readAsArrayBuffer(file);
-    }
-}
-
-        // Importar entradas web al sistema
-        function importarEntradasWeb() {
-            if (entradasWeb.length === 0) {
-                mostrarResultado('error', '❌ Error', 'No hay entradas web para importar');
-                playErrorSound();
-                return;
-            }
-
-            const hoy = new Date().toLocaleDateString();
-            let nuevosRegistros = 0;
-            let duplicados = 0;
-
-            entradasWeb.forEach(dni => {
-                // Verificar si ya está registrado hoy
-                const yaRegistrado = registros.some(r => 
-                    r.dni === dni && 
-                    esHoyISO(r.fecha)
-                );
-
-                if (!yaRegistrado) {
-                    registros.push({
-                        dni: dni,
-                        nombre: "Entrada Web",
-                        fecha: new Date().toISOString(),
-                        tipo: "web"
-                    });
-                    nuevosRegistros++;
-                } else {
-                    duplicados++;
-                }
-            });
-
-            guardarRegistros();
-            actualizarRegistros();
-            
-            importSummary.innerHTML = `
-                <strong>Resumen de importación:</strong><br>
-                ✅ Nuevos registros: ${nuevosRegistros}<br>
-                ⚠️ Duplicados: ${duplicados}<br>
-                📅 Total registros hoy: ${registros.filter(r => esHoy(r.fecha)).length}
-            `;
-            
-            mostrarResultado('success', '✅ Importación completada', `
-                Se importaron ${nuevosRegistros} entradas web<br>
-                ${duplicados} ya estaban registradas
-            `);
-            playSuccessSound();
-        }
-
-// Cargar abonos desde Excel/CSV
-function cargarAbonos(event) {
-    const file = event.target.files[0];
-    if (!file) return;
-
-    const extension = file.name.split('.').pop().toLowerCase();
-    const reader = new FileReader();
-
-    if (extension === 'csv') {
-        reader.onload = function(e) {
-            try {
-                let content = e.target.result;
-                if (content.charCodeAt(0) === 0xFEFF) {
-                    content = content.slice(1);
-                }
-
-                const lines = content.split(/\r?\n/).filter(line => line.trim() !== '');
-                const rawHeaders = lines[0].split(',').map(h => h.replace(/"/g, '').replace(/\uFEFF/g, '').trim().toLowerCase());
-
-                const dniIndex = rawHeaders.findIndex(h => h.includes('dni'));
-                if (dniIndex === -1) throw new Error("No se encontró columna 'DNI'");
-
-                const dnis = lines.slice(1).map(line => {
-    const cols = line.split(',').map(col => col.replace(/"/g, '').trim());
-    let dni = cols[dniIndex];
-    
-    // Limpiar DNI de espacios y caracteres especiales
-    if (dni) {
-        // Extraer solo números
-        dni = dni.replace(/\D/g, '');
-        
-        // Si viene en formato "Nombre;Apellido;DNI"
-        if (dni.includes(';')) {
-            const parts = dni.split(';');
-            dni = parts[parts.length - 1].trim();
-            dni = dni.replace(/\D/g, '');
-        }
-    }
-    
-    return dni;
-}).filter(Boolean);
-
-                if (dnis.length === 0) throw new Error("No se encontró ningún DNI válido");
-
-                abonosStatus.textContent = `✅ Abonos cargados: ${dnis.length}`;
-                abonosStatus.style.color = "green";
-                importAbonosBtn.disabled = false;
-                abonosWeb = dnis; // Variable especifica
-
-            } catch (error) {
-                abonosStatus.textContent = "❌ Error: " + error.message;
-                abonosStatus.style.color = "red";
-                console.error("Error al procesar abonos:", error);
-            }
-        };
-        reader.readAsText(file);
-    } else {
-        // Excel
-        reader.onload = function(e) {
-            try {
-                const data = new Uint8Array(e.target.result);
-                const workbook = XLSX.read(data, { type: 'array' });
-                const firstSheet = workbook.Sheets[workbook.SheetNames[0]];
-                const jsonData = XLSX.utils.sheet_to_json(firstSheet);
-
-                const firstRow = jsonData[0] || {};
-                const dniKey = Object.keys(firstRow).find(k => k.toLowerCase().includes('dni'));
-                if (!dniKey) throw new Error("No se encontró columna 'DNI'");
-
-                const dnis = jsonData.map(item => {
-                    let dni = item[dniKey]?.toString().trim();
-                    if (dni && dni.includes(';')) {
-                        const parts = dni.split(';');
-                        dni = parts[parts.length - 1].trim();
-                    }
-                    return dni;
-                }).filter(Boolean);
-
-                if (dnis.length === 0) throw new Error("No se encontró ningún DNI válido");
-
-                abonosStatus.textContent = `✅ Abonos cargados: ${dnis.length}`;
-                abonosStatus.style.color = "green";
-                importAbonosBtn.disabled = false;
-                entradasWeb = dnis;
-
-            } catch (error) {
-                abonosStatus.textContent = "❌ Error: " + error.message;
-                abonosStatus.style.color = "red";
-                console.error("Error al procesar abonos:", error);
-            }
-        };
-        reader.readAsArrayBuffer(file);
-    }
-}
-
-// Importar abonos al sistema (VERIFICANDO CONTRA SOCIOS)
-function importarAbonos() {
-    console.log("Importando abonos, cantidad:", abonosWeb.length);
-    
-    if (abonosWeb.length === 0) {
-        mostrarResultado('error', '❌ Error', 'No hay abonos para importar');
-        playErrorSound();
-        return;
-    }
-
-    if (socios.length === 0) {
-        mostrarResultado('error', '❌ Error', 'Primero debe cargar el listado de socios');
-        playErrorSound();
-        return;
-    }
-
-    const hoy = new Date().toLocaleDateString();
-    let nuevosRegistros = 0;
-    let duplicados = 0;
-    let noEncontrados = 0;
-    let detallesNoEncontrados = [];
-
-    abonosWeb.forEach(dni => {
-        const socioEncontrado = socios.find(s => s.dni === dni);
-        
-        if (!socioEncontrado) {
-            noEncontrados++;
-            detallesNoEncontrados.push(dni);
-            return;
-        }
-
-        const yaRegistrado = registros.some(r => r.dni === dni && esHoyISO(r.fecha));
-
-        if (!yaRegistrado) {
-            registros.push({
-                dni: dni,
-                nombre: socioEncontrado.nombre,
-                fecha: new Date().toISOString(),
-                tipo: "abono"
-            });
-            nuevosRegistros++;
-            console.log("Nuevo abono registrado:", socioEncontrado.nombre, dni);
-        } else {
-            duplicados++;
-            console.log("Abono duplicado:", socioEncontrado.nombre, dni);
-        }
-    });
-
-    guardarRegistros();
-    actualizarRegistros();
-    
-       
-    // Construir resumen detallado
-    let resumenHTML = `
-        <strong>Resumen de importación de abonos:</strong><br>
-        ✅ Nuevos abonos registrados: ${nuevosRegistros}<br>
-        ⚠️ Duplicados (ya estaban): ${duplicados}<br>
-    `;
-    
-    if (noEncontrados > 0) {
-        resumenHTML += `❌ DNIs no encontrados en socios: ${noEncontrados}<br>`;
-        if (noEncontrados <= 5) {
-            resumenHTML += `<small>DNIs no encontrados: ${detallesNoEncontrados.join(', ')}</small>`;
-        }
-    }
-    
-    resumenHTML += `<br>📅 Total registros hoy: ${registros.filter(r => esHoy(r.fecha)).length}`;
-    
-    abonosSummary.innerHTML = resumenHTML;
-    
-    // Mostrar resultado
-    if (noEncontrados > 0) {
-        mostrarResultado('warning', '⚠️ Importación parcial', `
-            Se importaron ${nuevosRegistros} abonos<br>
-            ${duplicados} ya estaban registrados<br>
-            <strong>${noEncontrados} DNIs no encontrados en socios</strong>
-        `);
-        playErrorSound();
-    } else {
-        mostrarResultado('success', '✅ Importación completada', `
-            Se importaron ${nuevosRegistros} abonos<br>
-            ${duplicados} ya estaban registrados
-        `);
-        playSuccessSound();
-    }
-}
-
-        
-        // Buscar socios (autocompletado)
-        function buscarSocios() {
-            const query = searchInput.value.trim().toLowerCase();
-            resultsList.innerHTML = '';
-            selectedSocio = null;
-            manualRegisterBtn.disabled = true;
-
-            if (query.length < 3) {
-                resultsList.style.display = 'none';
-                return;
-            }
-
-            const resultados = socios.filter(socio => 
-                socio.dni.includes(query) || 
-                socio.nombre.toLowerCase().includes(query)
-            );
-
-            if (resultados.length > 0) {
-                resultsList.innerHTML = resultados.map(socio => `
-                    <div class="result-item" data-dni="${socio.dni}">
-                        <strong>${socio.nombre}</strong><br>
-                        DNI: ${socio.dni}
-                    </div>
-                `).join('');
-                resultsList.style.display = 'block';
-                
-                document.querySelectorAll('.result-item').forEach(item => {
-                    item.addEventListener('click', function() {
-                        const dni = this.getAttribute('data-dni');
-                        selectedSocio = socios.find(s => s.dni === dni);
-                        searchInput.value = selectedSocio.nombre;
-                        resultsList.style.display = 'none';
-                        manualRegisterBtn.disabled = false;
-                    });
-                });
-            } else {
-                resultsList.innerHTML = '<div class="result-item">No se encontraron socios</div>';
-                resultsList.style.display = 'block';
-            }
-        }
-
-        // Iniciar escáner
-        function iniciarEscaneo() {
-    const readerContainer = document.getElementById('reader');
-    if (!readerContainer) {
-        console.error("❌ Contenedor #reader no encontrado");
-        return;
-    }
-
-    if (window.scanner && window.scanner.isScanning) {
-        console.log("✅ Escáner ya activo");
-        return;
-    }
-
-    console.log("📷 Iniciando escáner...");
-
-    readerContainer.innerHTML = '';
-    readerContainer.style.display = 'block';
-    readerContainer.style.minHeight = '400px';
-    readerContainer.style.height = '70vh';
-    readerContainer.style.background = '#000';
-
-    try {
-        window.scanner = new Html5Qrcode("reader");
-        
-        const config = {
-            fps: 10,
-            qrbox: { width: 300, height: 300 }
-        };
-
-        // ✅ CONFIGURACIÓN SIMPLIFICADA - SOLO EL FACING MODE
-        window.scanner.start(
-            { facingMode: "environment" },
-            config,
-            (decodedText) => {
-                procesarQR(decodedText);
-            },
-            (error) => {
-                if (error && !error.includes("NotFoundException") && !error.includes("No MultiFormat")) {
-                    console.log("Error escáner:", error);
-                }
-            }
-        ).then(() => {
-            console.log("✅ Escáner activo correctamente");
-        }).catch(err => {
-            console.error("❌ Error al iniciar escáner:", err);
-            mostrarErrorCamara();
-        });
-        
-    } catch (e) {
-        console.error("❌ Error al crear escáner:", e);
-        mostrarErrorCamara();
-    }
-}
-
-function mostrarErrorCamara() {
-    const reader = document.getElementById('reader');
-    reader.innerHTML = `
-        <div style="
+        .resumen { margin-top: 12px; font-size: 14px; line-height: 1.7; }
+
+        /* Estado de error de cámara */
+        .cam-error {
+            position: absolute;
+            inset: 0;
             display: flex;
             flex-direction: column;
             align-items: center;
             justify-content: center;
-            height: 300px;
-            background: #1a1a2e;
-            color: white;
+            text-align: center;
+            padding: 30px;
+            z-index: 8;
+            background: #000;
+        }
+        .cam-error h3 { color: var(--err); margin: 14px 0 8px; font-size: 22px; }
+        .cam-error p { color: var(--text2); font-size: 15px; line-height: 1.7; margin: 0 0 18px; }
+        .cam-error button {
+            background: var(--accent);
+            color: #000;
+            border: none;
+            padding: 14px 30px;
             border-radius: 10px;
-            padding: 20px;
-        ">
-            <div style="font-size: 48px; margin-bottom: 10px;">📷</div>
-            <h3 style="margin: 0; color: #ff6b6b;">No se puede acceder a la cámara</h3>
-            <p style="text-align: center; opacity: 0.8; font-size: 14px;">
-                Verifica que:<br>
-                1️⃣ La cámara esté conectada y funcionando<br>
-                2️⃣ Hayas aceptado los permisos de cámara<br>
-                3️⃣ No haya otra app usando la cámara
-            </p>
-            <button onclick="forzarCamara()" style="
-                background: #FF4000;
-                color: white;
-                border: none;
-                padding: 12px 25px;
-                border-radius: 8px;
-                font-size: 16px;
-                margin-top: 15px;
-                cursor: pointer;
-            ">
-                🔄 Reintentar
-            </button>
+            font-size: 16px;
+            font-weight: 700;
+            cursor: pointer;
+        }
+
+        @media (max-width: 640px) {
+            #reloj { display: none; }
+            #clubNombre { font-size: 13px; }
+            .corner { width: 40px; height: 40px; border-width: 4px; }
+        }
+    </style>
+</head>
+<body>
+    <!-- ============ VISTA TÓTEM ============ -->
+    <div id="kiosk">
+        <div id="topbar">
+            <div class="brand">
+                <img id="clubLogo" src="Logo MB-ticket.png" alt="Logo" onerror="this.style.display='none'">
+                <span id="clubNombre">Control de Acceso</span>
+            </div>
+            <div class="right">
+                <span id="reloj"></span>
+                <span id="contadorHoy">0 ingresos hoy</span>
+                <button class="icon-btn" id="camSwitchBtn" title="Cambiar cámara">🔃</button>
+                <button class="icon-btn" id="fullscreenBtn" title="Pantalla completa">⛶</button>
+                <button class="icon-btn" id="adminBtn" title="Administración">⚙️</button>
+            </div>
         </div>
-    `;
-}
 
-        // Procesar código QR escaneado
-        function procesarQR(qrContent) {
-    // Usar temporizador para permitir re-escaneo después de 1.5 segundos
-    const ahora = Date.now();
-    if (window.ultimoEscaneo && (ahora - window.ultimoEscaneo < 1500)) return;
-    window.ultimoEscaneo = ahora;
+        <div id="stage">
+            <div id="reader"></div>
+            <div id="scanFrame">
+                <span class="corner tl"></span>
+                <span class="corner tr"></span>
+                <span class="corner bl"></span>
+                <span class="corner br"></span>
+                <div id="scanline"></div>
+            </div>
+            <div id="hintPill">📷 Acerque el carnet a la cámara</div>
+        </div>
 
-    // --- MOSTRAR EN CONSOLA QUÉ SE ESCANEÓ ---
-    console.log("📷 QR Escaneado (crudo):", qrContent);
+        <div id="bottombar">
+            <span>Último ingreso:</span>
+            <span id="ultimoRegistro">—</span>
+        </div>
+    </div>
 
-    // 1. Limpiar el contenido del QR para quedarnos solo con el DNI
-    let dni = qrContent;
-    // Si el QR tiene formato "DNI=12345678", extraemos la parte después del '='
-    if (dni.includes('=')) {
-        dni = dni.split('=')[1];
+    <!-- ============ RESULTADO ============ -->
+    <div id="resultOverlay">
+        <div id="resultIcon"></div>
+        <h1 id="resultTitle"></h1>
+        <div id="resultDetail"></div>
+    </div>
+
+    <!-- ============ ADMINISTRACIÓN ============ -->
+    <div id="adminOverlay">
+        <div id="adminPanel">
+            <div id="adminHeader">
+                <h2>⚙️ Administración</h2>
+                <button class="icon-btn" id="adminCloseBtn" title="Volver al tótem">✕</button>
+            </div>
+            <div id="adminBody">
+                <div class="tabs">
+                    <div class="tab active" data-tab="socios">Socios</div>
+                    <div class="tab" data-tab="web">Entradas Web</div>
+                    <div class="tab" data-tab="abonos">Abonos/Invita</div>
+                    <div class="tab" data-tab="manual">Ingreso Manual</div>
+                    <div class="tab" data-tab="registros">Registros e Informe</div>
+                </div>
+
+                <div id="socios" class="tab-content active">
+                    <div class="panel">
+                        <h3 class="panel-title">Listado de Socios (CSV: Nombre;Apellido;DNI)</h3>
+                        <div class="file-upload">
+                            <label for="csvFile">📂 Seleccionar listado de socios</label>
+                            <input type="file" id="csvFile" accept=".csv,.txt">
+                            <p id="csvStatus" class="file-status">Esperando archivo CSV...</p>
+                        </div>
+                    </div>
+                </div>
+
+                <div id="web" class="tab-content">
+                    <div class="panel">
+                        <h3 class="panel-title">Importar Entradas Web (Excel/CSV con columna DNI)</h3>
+                        <div class="file-upload">
+                            <label for="webSalesFile">📂 Seleccionar ventas web</label>
+                            <input type="file" id="webSalesFile" accept=".csv,.xlsx,.xls">
+                            <p id="webSalesStatus" class="file-status">Esperando archivo de ventas web...</p>
+                        </div>
+                        <button class="action" id="importWebBtn" disabled>Importar Entradas</button>
+                        <p id="importSummary" class="resumen"></p>
+                    </div>
+                </div>
+
+                <div id="abonos" class="tab-content">
+                    <div class="panel">
+                        <h3 class="panel-title">Registro de Abonos/Invitaciones</h3>
+                        <div class="file-upload">
+                            <label for="abonosFile">📂 Seleccionar listado de abonos</label>
+                            <input type="file" id="abonosFile" accept=".csv,.xlsx,.xls">
+                            <p id="abonosStatus" class="file-status">Esperando archivo de abonos...</p>
+                        </div>
+                        <button class="action" id="importAbonosBtn" disabled>Registrar Abonos</button>
+                        <p id="abonosSummary" class="resumen"></p>
+                        <div class="instrucciones">
+                            • El archivo debe tener una columna <strong>DNI</strong><br>
+                            • Se registran como tipo <strong>"Abono"</strong> verificando contra el listado de socios<br>
+                            • Si ya ingresaron hoy, se muestran como duplicados
+                        </div>
+                    </div>
+                </div>
+
+                <div id="manual" class="tab-content">
+                    <div class="panel">
+                        <h3 class="panel-title">Búsqueda Manual de Socio</h3>
+                        <div class="search-results">
+                            <input type="text" id="searchInput" placeholder="Buscar por DNI o nombre (mínimo 3 caracteres)">
+                            <div id="resultsList"></div>
+                        </div>
+                        <button class="action" id="manualRegisterBtn" disabled>Registrar Ingreso Manual</button>
+                    </div>
+                </div>
+
+                <div id="registros" class="tab-content">
+                    <div class="panel">
+                        <h3 class="panel-title">Registros de Hoy</h3>
+                        <div id="registros-list"><p>No hay registros aún.</p></div>
+                        <button class="action" id="exportBtn">📊 Generar Informe (CSV)</button>
+                        <button class="action" id="clearBtn">🗑️ Limpiar Registros de Hoy</button>
+                        <button class="action" id="logoutBtn">🔓 Cerrar Sesión</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+
+    <script>
+    // ================================================================
+    //  MB TICKET - Control de Acceso (modo tótem)
+    // ================================================================
+
+    // ---------- Pantalla completa ----------
+    function entrarFullscreen() {
+        if (!document.fullscreenElement && document.documentElement.requestFullscreen) {
+            document.documentElement.requestFullscreen().catch(() => {});
+        }
     }
-    // Eliminamos cualquier espacio en blanco al inicio y final
-    dni = dni.trim();
-    // --- MOSTRAR EN CONSOLA EL DNI PROCESADO ---
-    console.log("🔍 DNI procesado para búsqueda:", `"${dni}"`);
+    // Primer toque en cualquier parte → pantalla completa + desbloquear audio
+    document.addEventListener('pointerdown', function primerToque() {
+        entrarFullscreen();
+        initAudio();
+    }, { once: true });
 
-    // 2. Buscar el socio en la lista, pero intentando varias formas
-    let socio = socios.find(s => s.dni === dni);
-
-    // Si no se encuentra, intentar buscar eliminando puntos, guiones o espacios
-    if (!socio) {
-        const dniLimpio = dni.replace(/[.-]/g, '');
-        socio = socios.find(s => s.dni === dniLimpio);
-        if (socio) console.log("✅ Encontrado tras limpiar caracteres especiales:", socio.dni);
-    }
-
-    // Si no se encuentra, intentar buscar como parte de un número más grande
-    if (!socio) {
-        socio = socios.find(s => s.dni.includes(dni) || dni.includes(s.dni));
-        if (socio) console.log("✅ Encontrado por coincidencia parcial:", socio.dni);
-    }
-    
-    // --- MOSTRAR EN CONSOLA SI SE ENCONTRÓ O NO ---
-    console.log("👤 Socio encontrado:", socio ? socio.nombre : "NO ENCONTRADO");
-
-    if (!socio) {
-        mostrarResultado('error', '❌ No registrado', `DNI: ${dni}`);
-        playErrorSound();
-        return;
-    }
-
-    // Verificar si ya ingresó hoy
-    const hoy = new Date().toLocaleDateString();
-    const yaRegistrado = registros.some(r => 
-        r.dni === socio.dni && 
-        esHoyISO(r.fecha)
-    );
-
-    if (yaRegistrado) {
-        mostrarResultado('error', '❌ Ya ingresó hoy', `
-            ${socio.nombre}<br>
-            DNI: ${socio.dni}
-        `);
-        playErrorSound();
-        return;
-    }
-
-    // Registrar el ingreso
-    registros.push({
-        dni: socio.dni,
-        nombre: socio.nombre,
-        fecha: new Date().toISOString(),
-        tipo: "carnet"
+    document.getElementById('fullscreenBtn').addEventListener('click', (e) => {
+        e.stopPropagation();
+        if (document.fullscreenElement) {
+            document.exitFullscreen().catch(() => {});
+        } else {
+            entrarFullscreen();
+        }
     });
-    
-    guardarRegistros();
-    actualizarRegistros();
-    
-    mostrarResultado('success', '✅ Registrado', `
-        ${socio.nombre}<br>
-        DNI: ${socio.dni}
-    `);
-    playSuccessSound();
-}
 
-        // Registrar manualmente
-        function registrarManual() {
-    if (!selectedSocio) {
-        mostrarResultado('error', '❌ Error', 'Seleccione un socio de la lista');
-        playErrorSound();
-        return;
+    // ---------- Sonidos (WebAudio, sin archivos externos) ----------
+    let audioCtx = null;
+    function initAudio() {
+        if (!audioCtx) {
+            try { audioCtx = new (window.AudioContext || window.webkitAudioContext)(); } catch (e) {}
+        }
+        if (audioCtx && audioCtx.state === 'suspended') audioCtx.resume().catch(() => {});
+    }
+    function tono(freq, inicio, dur, tipo, volumen) {
+        if (!audioCtx) return;
+        const osc = audioCtx.createOscillator();
+        const gain = audioCtx.createGain();
+        osc.type = tipo || 'sine';
+        osc.frequency.value = freq;
+        gain.gain.setValueAtTime(0.0001, audioCtx.currentTime + inicio);
+        gain.gain.exponentialRampToValueAtTime(volumen || 0.25, audioCtx.currentTime + inicio + 0.02);
+        gain.gain.exponentialRampToValueAtTime(0.0001, audioCtx.currentTime + inicio + dur);
+        osc.connect(gain).connect(audioCtx.destination);
+        osc.start(audioCtx.currentTime + inicio);
+        osc.stop(audioCtx.currentTime + inicio + dur + 0.05);
+    }
+    function playSuccessSound() {
+        initAudio();
+        tono(880, 0, 0.14, 'sine', 0.3);
+        tono(1320, 0.13, 0.22, 'sine', 0.3);
+    }
+    function playErrorSound() {
+        initAudio();
+        tono(220, 0, 0.22, 'square', 0.16);
+        tono(180, 0.2, 0.3, 'square', 0.16);
     }
 
-    const hoy = new Date().toISOString().slice(0, 10);
-    const yaIngresado = registros.find(r =>
-        r.dni === selectedSocio.dni &&
-        r.fecha.slice(0, 10) === hoy
-    );
+    // ---------- Reloj ----------
+    function actualizarReloj() {
+        const ahora = new Date();
+        document.getElementById('reloj').textContent =
+            ahora.toLocaleDateString('es-AR', { weekday: 'short', day: 'numeric', month: 'short' }) +
+            ' · ' + ahora.toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit' });
+    }
+    setInterval(actualizarReloj, 1000);
+    actualizarReloj();
 
-    if (yaIngresado) {
-    const tipoTexto = yaIngresado.tipo === 'web' ? ' (VENTA WEB)' : 
-                     yaIngresado.tipo === 'abono' ? ' (ABONADO)' : 
-                     yaIngresado.tipo === 'manual' ? ' (MANUAL)' : '';
-    
-    mostrarResultado('error', '❌ Ya ingresó hoy', `
-        ${selectedSocio.nombre}<br>
-        DNI: ${selectedSocio.dni}${tipoTexto}
-    `);
-    playErrorSound();
-    return;
-}
-
-    const registro = {
-        dni: selectedSocio.dni,
-        nombre: selectedSocio.nombre,
-        fecha: new Date().toISOString(),
-        tipo: "manual"
+    // ---------- Sistema de acceso ----------
+    const CONFIG_CLUBES = {
+        "gimnasia123": {
+            nombre: "Gimnasia y Esgrima de Comodoro Rivadavia",
+            colores: { primario: "#228B22", secundario: "#90EE90" },
+            logo: "https://upload.wikimedia.org/wikipedia/en/1/10/Club_Gimnasia_y_Esgrima_logo.svg",
+            contraseña: "gimnasia123"
+        },
+        "river123": {
+            nombre: "Club Atlético River Plate",
+            colores: { primario: "#C8102E", secundario: "#F0F0F0" },
+            logo: "https://upload.wikimedia.org/wikipedia/commons/3/3f/Logo_River_Plate.png",
+            contraseña: "river123"
+        },
+        "boca123": {
+            nombre: "Club Atlético Boca Juniors",
+            colores: { primario: "#FFD700", secundario: "#005CA9" },
+            logo: "https://upload.wikimedia.org/wikipedia/commons/thumb/4/41/CABJ70.png/240px-CABJ70.png",
+            contraseña: "boca123"
+        }
     };
 
-    registros.push(registro);
-    guardarRegistros();
-    actualizarRegistros();
+    function verificarAcceso() {
+        if (localStorage.getItem('acceso_autorizado') === 'true') return true;
+        mostrarPantallaAcceso();
+        return false;
+    }
 
-    mostrarResultado('success', '✅ Registrado', selectedSocio.nombre);
-    playSuccessSound();
+    function mostrarPantallaAcceso() {
+        document.body.innerHTML = `
+        <div style="display:flex;justify-content:center;align-items:center;height:100vh;height:100dvh;background:#000;font-family:'Inter','Segoe UI',sans-serif;color:#e0e0e0;text-align:center;padding:20px;">
+            <div style="background:rgba(30,30,36,0.95);padding:40px 30px;border-radius:20px;border:1px solid #4a4a5a;max-width:420px;width:92%;box-shadow:0 12px 50px rgba(0,0,0,0.6);">
+                <div style="margin-bottom:24px;">
+                    <div style="font-size:46px;margin-bottom:8px;">🎫</div>
+                    <h1 style="margin:0 0 4px;font-size:24px;font-weight:800;color:#fff;">MB TICKET</h1>
+                    <p style="margin:0;color:#9a9aab;font-size:13px;">Sistema Profesional de Control de Acceso</p>
+                </div>
+                <div style="margin-bottom:22px;">
+                    <h2 style="margin:0 0 14px;font-size:17px;font-weight:600;color:#00aaff;">🔒 Acceso Restringido</h2>
+                    <input type="password" id="inputPassword" placeholder="Contraseña de acceso" autocomplete="off"
+                        style="width:100%;padding:14px;border:1px solid #4a4a5a;border-radius:10px;background:rgba(0,0,0,0.5);color:#e0e0e0;font-size:16px;margin-bottom:14px;box-sizing:border-box;">
+                    <button onclick="initAudio();validarAcceso()"
+                        style="width:100%;background:#00aaff;color:#000;border:none;padding:14px;border-radius:10px;font-weight:800;font-size:16px;cursor:pointer;">
+                        Ingresar al Sistema
+                    </button>
+                </div>
+                <div style="border-top:1px solid #4a4a5a;padding-top:16px;">
+                    <p style="margin:0 0 6px;font-size:12px;color:#9a9aab;">💼 <strong>MB Ticket Solutions</strong></p>
+                    <p style="margin:0 0 4px;font-size:11px;color:#9a9aab;">📞 +54 9 297 403-8368</p>
+                    <p style="margin:0;font-size:11px;color:#9a9aab;">✉️ soporte@mbticket.com</p>
+                </div>
+                <div id="intentosInfo" style="margin-top:14px;font-size:12px;color:#9a9aab;">Intentos restantes: 3</div>
+            </div>
+        </div>`;
+        setTimeout(() => document.getElementById('inputPassword').focus(), 100);
+        document.getElementById('inputPassword').addEventListener('keypress', function (e) {
+            if (e.key === 'Enter') validarAcceso();
+        });
+    }
 
-    // Limpiar búsqueda
-    searchInput.value = '';
-    resultsList.style.display = 'none';
-    selectedSocio = null;
-    manualRegisterBtn.disabled = true;
-}
+    let intentosRestantes = 3;
 
-
-        // Actualizar registros
-        function actualizarRegistros() {
-            const hoy = new Date().toLocaleDateString();
-            const registrosHoy = registros.filter(r => 
-                esHoyISO(r.fecha)
-            );
-
-            registrosList.innerHTML = registrosHoy.length > 0
-                ? registrosHoy.map(r => `
-                    <div class="registro-item">
-                        <strong>${r.fecha}</strong><br>
-                        ${r.nombre} (DNI: ${r.dni})<br>
-                        <small>Tipo: ${r.tipo === 'web' ? 'Entrada Web' : r.tipo === 'abono' ? 'Abono/Invita' : r.tipo === 'manual' ? 'Registro Manual' : 'Carnet'}</small>
-                    </div>
-                `).join('')
-                : '<p>No hay registros aún.</p>';
-        }
-
-        // Exportar registros
-        function exportarRegistros() {
-            const hoy = new Date().toLocaleDateString();
-            const registrosHoy = registros.filter(r => 
-                esHoyISO(r.fecha)
-            );
-
-            let csv = "Fecha,Nombre,DNI,Tipo\n";
-            registrosHoy.forEach(r => {
-                csv += `"${r.fecha}","${r.nombre}","${r.dni}","${r.tipo}"\n`;
-            });
-
-            const blob = new Blob([csv], { type: 'text/csv' });
-            const url = URL.createObjectURL(blob);
-            const a = document.createElement('a');
-            a.href = url;
-            a.download = `registros_${hoy.replace(/\//g, '-')}.csv`;
-            a.click();
-        }
-
-        // Limpiar registros
-        function limpiarRegistros() {
-            if (confirm('¿Borrar todos los registros de hoy?')) {
-                const hoy = new Date().toLocaleDateString();
-                registros = registros.filter(r => 
-                    new Date(r.fecha).toLocaleDateString() !== hoy
-                );
-                guardarRegistros();
-                actualizarRegistros();
+    function validarAcceso() {
+        const input = document.getElementById('inputPassword');
+        const clubConfig = CONFIG_CLUBES[input.value];
+        if (clubConfig) {
+            localStorage.setItem('acceso_autorizado', 'true');
+            localStorage.setItem('club_config', JSON.stringify(clubConfig));
+            location.reload();
+        } else {
+            intentosRestantes--;
+            if (intentosRestantes > 0) {
+                document.getElementById('intentosInfo').textContent =
+                    `❌ Contraseña incorrecta. Intentos restantes: ${intentosRestantes}`;
+                input.value = '';
+                input.focus();
+            } else {
+                mostrarPantallaBloqueo();
             }
         }
+    }
 
-        // Mostrar resultado
-        function mostrarResultado(tipo, icono, mensaje) {
-  const result = document.getElementById('result');
-  result.innerHTML = `
-    <div class="icon" style="font-size: 50px; margin-bottom: 15px;">${icono}</div>
-    <div style="font-size: 18px; line-height: 1.4;">${mensaje}</div>
-  `;
-  result.className = tipo;
-  result.style.display = 'block';
+    function mostrarPantallaBloqueo() {
+        document.body.innerHTML = `
+        <div style="display:flex;justify-content:center;align-items:center;height:100vh;background:#000;font-family:'Inter',sans-serif;color:#e0e0e0;text-align:center;padding:20px;">
+            <div style="background:rgba(30,30,36,0.95);padding:40px 30px;border-radius:20px;border:1px solid #f44336;max-width:420px;width:92%;">
+                <div style="font-size:56px;margin-bottom:16px;">🚫</div>
+                <h1 style="margin:0 0 14px;font-size:22px;color:#f44336;">Acceso Bloqueado</h1>
+                <p style="margin:0 0 20px;color:#9a9aab;line-height:1.6;">Se agotaron los intentos.<br>Contacte al administrador del sistema.</p>
+                <p style="margin:0;font-size:12px;color:#9a9aab;">📞 +54 9 297 403-8368 · ✉️ soporte@mbticket.com</p>
+            </div>
+        </div>`;
+    }
 
-  // Sonido
-  try {
-    const sound = tipo === 'success' ? 
-      document.getElementById('successSound') : 
-      document.getElementById('errorSound');
-    sound.currentTime = 0;
-    sound.play().catch(e => console.log("Sonido bloqueado:", e));
-  } catch (e) {
-    console.log("Error en sonido:", e);
-  }
+    if (!verificarAcceso()) {
+        throw new Error("Acceso no autorizado");
+    }
 
-  setTimeout(() => {
-    result.style.display = 'none';
-  }, 3000);
-}
+    // ---------- Tema del club ----------
+    const clubConfig = JSON.parse(localStorage.getItem('club_config') || 'null');
+    if (clubConfig) {
+        document.documentElement.style.setProperty('--club', clubConfig.colores.primario);
+        document.getElementById('clubNombre').textContent = clubConfig.nombre;
+        const logoImg = document.getElementById('clubLogo');
+        logoImg.src = clubConfig.logo;
+        logoImg.onerror = () => { logoImg.style.display = 'none'; };
+        document.title = `Control Acceso - ${clubConfig.nombre}`;
+    }
 
-        // Verificar si es hoy
-        function esHoy(fechaStr) {
-            const fechaRegistro = new Date(fechaStr);
-            const hoy = new Date();
-            return fechaRegistro.getDate() === hoy.getDate() && 
-                   fechaRegistro.getMonth() === hoy.getMonth() && 
-                   fechaRegistro.getFullYear() === hoy.getFullYear();
+    // ---------- Datos (persistidos en la tablet) ----------
+    let socios = JSON.parse(localStorage.getItem('socios')) || [];
+    let registros = JSON.parse(localStorage.getItem('registros')) || [];
+    let entradasWeb = JSON.parse(localStorage.getItem('entradasWeb')) || [];
+    let abonosWeb = JSON.parse(localStorage.getItem('abonosWeb')) || [];
+    let scanner = null;
+    let scannerActivo = false;
+    let scanBloqueado = false;
+    let selectedSocio = null;
+    let camaras = [];
+    let camaraActual = 0;
+
+    // ---------- Utilidades ----------
+    function limpiarDNI(dni) {
+        if (!dni) return '';
+        return dni.toString().replace(/\D/g, '');
+    }
+
+    // Comparación por fecha LOCAL (corrige el bug de medianoche por UTC)
+    function esHoyISO(fechaISO) {
+        const f = new Date(fechaISO);
+        const h = new Date();
+        return f.getFullYear() === h.getFullYear() &&
+               f.getMonth() === h.getMonth() &&
+               f.getDate() === h.getDate();
+    }
+
+    function guardarRegistros() {
+        try { localStorage.setItem('registros', JSON.stringify(registros)); }
+        catch (e) { console.error("Error al guardar registros:", e); }
+    }
+    function guardarSocios() {
+        try { localStorage.setItem('socios', JSON.stringify(socios)); } catch (e) {}
+    }
+
+    // ---------- Iconos SVG del resultado ----------
+    const ICONOS = {
+        success: `<svg viewBox="0 0 100 100"><circle cx="50" cy="50" r="46" fill="none" stroke="#4caf50" stroke-width="6"/><path d="M30 52 L45 67 L72 36" fill="none" stroke="#4caf50" stroke-width="8" stroke-linecap="round" stroke-linejoin="round"/></svg>`,
+        error: `<svg viewBox="0 0 100 100"><circle cx="50" cy="50" r="46" fill="none" stroke="#f44336" stroke-width="6"/><path d="M33 33 L67 67 M67 33 L33 67" stroke="#f44336" stroke-width="8" stroke-linecap="round"/></svg>`,
+        warning: `<svg viewBox="0 0 100 100"><path d="M50 8 L94 88 L6 88 Z" fill="none" stroke="#ffc107" stroke-width="6" stroke-linejoin="round"/><line x1="50" y1="36" x2="50" y2="62" stroke="#ffc107" stroke-width="8" stroke-linecap="round"/><circle cx="50" cy="76" r="4.5" fill="#ffc107"/></svg>`
+    };
+
+    let resultadoTimer = null;
+    function mostrarResultado(tipo, titulo, detalleHTML) {
+        const overlay = document.getElementById('resultOverlay');
+        document.getElementById('resultIcon').innerHTML = ICONOS[tipo] || ICONOS.success;
+        document.getElementById('resultTitle').textContent = titulo;
+        document.getElementById('resultDetail').innerHTML = detalleHTML;
+        overlay.className = 'show ' + tipo;
+        if (tipo === 'success') playSuccessSound(); else playErrorSound();
+
+        clearTimeout(resultadoTimer);
+        resultadoTimer = setTimeout(() => {
+            overlay.className = '';
+            // Reanudar el escáner
+            try { if (scanner && scannerActivo) scanner.resume(); } catch (e) {}
+            scanBloqueado = false;
+        }, 2200);
+    }
+
+    // ---------- Escáner ----------
+    function iniciarEscaneo() {
+        const readerContainer = document.getElementById('reader');
+        if (!readerContainer) return;
+        if (scannerActivo) return;
+
+        readerContainer.innerHTML = '';
+        scanner = new Html5Qrcode("reader", { verbose: false });
+
+        const config = {
+            fps: 10,
+            // Marco de lectura grande: 72% del lado menor del visor
+            qrbox: function (w, h) {
+                const edge = Math.floor(Math.min(w, h) * 0.72);
+                return { width: edge, height: edge };
+            },
+            videoConstraints: {
+                width: { ideal: 1280 },
+                height: { ideal: 720 }
+            }
+        };
+
+        const onScan = (decodedText) => {
+            if (scanBloqueado) return;
+            scanBloqueado = true;
+            try { scanner.pause(true); } catch (e) {}
+            procesarQR(decodedText);
+        };
+
+        scanner.start({ facingMode: "environment" }, config, onScan, () => {})
+            .then(() => {
+                scannerActivo = true;
+                console.log("✅ Escáner activo (cámara trasera)");
+            })
+            .catch(async (err) => {
+                console.warn("⚠️ facingMode falló, buscando cámaras...", err);
+                try {
+                    camaras = await Html5Qrcode.getCameras();
+                    if (!camaras || camaras.length === 0) throw new Error("Sin cámaras");
+                    // Preferir la trasera por nombre; si no, la última de la lista
+                    const idx = camaras.findIndex(c => /back|rear|trasera|environment/i.test(c.label));
+                    camaraActual = idx >= 0 ? idx : camaras.length - 1;
+                    await scanner.start(camaras[camaraActual].id, config, onScan, () => {});
+                    scannerActivo = true;
+                    console.log("✅ Escáner activo:", camaras[camaraActual].label);
+                } catch (e2) {
+                    console.error("❌ No se pudo iniciar la cámara:", e2);
+                    mostrarErrorCamara();
+                }
+            });
+    }
+
+    async function cambiarCamara() {
+        if (!scanner) return;
+        try {
+            if (camaras.length === 0) camaras = await Html5Qrcode.getCameras();
+            if (camaras.length < 2) return;
+            const estabaActivo = scannerActivo;
+            if (scannerActivo) { await scanner.stop(); scannerActivo = false; }
+            scanner.clear();
+            camaraActual = (camaraActual + 1) % camaras.length;
+            // Reiniciar con la cámara específica
+            const readerContainer = document.getElementById('reader');
+            readerContainer.innerHTML = '';
+            scanner = new Html5Qrcode("reader", { verbose: false });
+            const config = {
+                fps: 10,
+                qrbox: (w, h) => {
+                    const edge = Math.floor(Math.min(w, h) * 0.72);
+                    return { width: edge, height: edge };
+                }
+            };
+            await scanner.start(camaras[camaraActual].id, config, (t) => {
+                if (scanBloqueado) return;
+                scanBloqueado = true;
+                try { scanner.pause(true); } catch (e) {}
+                procesarQR(t);
+            }, () => {});
+            scannerActivo = true;
+        } catch (e) {
+            console.error("Error al cambiar cámara:", e);
+            mostrarErrorCamara();
+        }
+    }
+    document.getElementById('camSwitchBtn').addEventListener('click', (e) => {
+        e.stopPropagation();
+        cambiarCamara();
+    });
+
+    function mostrarErrorCamara() {
+        scannerActivo = false;
+        document.getElementById('reader').innerHTML = `
+            <div class="cam-error">
+                <svg width="72" height="72" viewBox="0 0 100 100"><circle cx="50" cy="50" r="46" fill="none" stroke="#f44336" stroke-width="5"/><text x="50" y="62" text-anchor="middle" font-size="40" fill="#f44336">📷</text></svg>
+                <h3>No se puede acceder a la cámara</h3>
+                <p>Verifique que:<br>1. La cámara esté conectada y funcionando<br>2. Haya aceptado los permisos de cámara<br>3. Ninguna otra app esté usando la cámara</p>
+                <button onclick="reintentarCamara()">🔄 Reintentar</button>
+            </div>`;
+    }
+
+    function reintentarCamara() {
+        if (scanner) {
+            try { scanner.clear(); } catch (e) {}
+            scanner = null;
+        }
+        scannerActivo = false;
+        iniciarEscaneo();
+    }
+
+    // ---------- Procesar QR ----------
+    function procesarQR(qrContent) {
+        console.log("📷 QR escaneado:", qrContent);
+
+        if (socios.length === 0) {
+            mostrarResultado('warning', 'SIN LISTADO', 'Cargue primero el listado de socios<br>desde el panel ⚙️');
+            return;
         }
 
-        // Función para guardar registros (optimizada para móviles)
-        function guardarRegistros() {
+        // Extraer el DNI del contenido del QR
+        let dni = qrContent;
+        if (dni.includes('=')) dni = dni.split('=').pop();
+        if (dni.includes(';')) dni = dni.split(';').pop();
+        dni = limpiarDNI(dni.trim());
+
+        // Búsqueda exacta (el listado ya se guarda con DNI limpio)
+        const socio = socios.find(s => s.dni === dni);
+
+        if (!socio) {
+            mostrarResultado('error', 'NO REGISTRADO', `DNI: <span class="mono">${dni || qrContent}</span>`);
+            return;
+        }
+
+        const yaRegistrado = registros.find(r => r.dni === socio.dni && esHoyISO(r.fecha));
+        if (yaRegistrado) {
+            const tipoTxt = yaRegistrado.tipo === 'web' ? 'ENTRADA WEB' :
+                            yaRegistrado.tipo === 'abono' ? 'ABONADO' :
+                            yaRegistrado.tipo === 'manual' ? 'MANUAL' : 'CARNET';
+            const hora = new Date(yaRegistrado.fecha).toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit' });
+            mostrarResultado('error', 'YA INGRESÓ HOY',
+                `${socio.nombre}<br>DNI: <span class="mono">${socio.dni}</span><br><small style="font-size:0.6em;opacity:0.85;">Ingresó ${hora} · ${tipoTxt}</small>`);
+            return;
+        }
+
+        registros.push({
+            dni: socio.dni,
+            nombre: socio.nombre,
+            fecha: new Date().toISOString(),
+            tipo: "carnet"
+        });
+        guardarRegistros();
+        actualizarRegistros();
+
+        mostrarResultado('success', '¡BIENVENIDO!',
+            `${socio.nombre}<br>DNI: <span class="mono">${socio.dni}</span>`);
+    }
+
+    // ---------- Carga de socios ----------
+    document.getElementById('csvFile').addEventListener('change', function (event) {
+        const file = event.target.files[0];
+        if (!file) return;
+        const csvStatus = document.getElementById('csvStatus');
+        const reader = new FileReader();
+        reader.onload = function (e) {
             try {
-                localStorage.setItem('registros', JSON.stringify(registros));
-                console.log('Registros guardados correctamente');
-            } catch (e) {
-                console.error("Error al guardar registros:", e);
+                let content = e.target.result;
+                if (content.charCodeAt(0) === 0xFEFF) content = content.slice(1);
+                const lines = content.split(/\r?\n/).filter(l => l.trim() !== '');
+                const lista = lines.map(line => {
+                    const partes = line.split(';');
+                    if (partes.length < 3) return null;
+                    const dniLimpio = limpiarDNI(partes[2]);
+                    if (!dniLimpio) return null; // salta encabezados y líneas inválidas
+                    return {
+                        nombre: `${partes[0].trim()} ${partes[1].trim()}`,
+                        dni: dniLimpio
+                    };
+                }).filter(Boolean);
+
+                if (lista.length === 0) throw new Error("sin datos válidos");
+                socios = lista;
+                guardarSocios();
+                csvStatus.textContent = `✅ Socios cargados: ${socios.length}`;
+                csvStatus.style.color = "#4caf50";
+            } catch (error) {
+                csvStatus.textContent = "❌ Error: el archivo debe tener formato Nombre;Apellido;DNI";
+                csvStatus.style.color = "#f44336";
             }
-        }
+        };
+        reader.onerror = () => {
+            csvStatus.textContent = "❌ Error al leer el archivo";
+            csvStatus.style.color = "#f44336";
+        };
+        reader.readAsText(file);
+    });
 
-        // Funciones mejoradas para sonido en móviles
-        function playSuccessSound() {
-            const sound = document.getElementById('successSound');
-            sound.volume = 0.5;
-            sound.play().catch(e => {
-                console.log("No se pudo reproducir sonido:", e);
-                // Mostrar notificación visual alternativa
-                mostrarResultado('info', '🔔', 'Registro exitoso');
+    // ---------- Entradas web ----------
+    document.getElementById('webSalesFile').addEventListener('change', function (event) {
+        const file = event.target.files[0];
+        if (!file) return;
+        const webSalesStatus = document.getElementById('webSalesStatus');
+        const extension = file.name.split('.').pop().toLowerCase();
+        const reader = new FileReader();
+
+        const procesarDnis = (dnis) => {
+            const limpios = dnis.map(limpiarDNI).filter(Boolean);
+            if (limpios.length === 0) throw new Error("No se encontró ningún DNI válido");
+            entradasWeb = limpios;
+            localStorage.setItem('entradasWeb', JSON.stringify(entradasWeb));
+            webSalesStatus.textContent = `✅ Entradas web cargadas: ${limpios.length}`;
+            webSalesStatus.style.color = "#4caf50";
+            document.getElementById('importWebBtn').disabled = false;
+        };
+
+        if (extension === 'csv') {
+            reader.onload = function (e) {
+                try {
+                    let content = e.target.result;
+                    if (content.charCodeAt(0) === 0xFEFF) content = content.slice(1);
+                    const lines = content.split(/\r?\n/).filter(l => l.trim() !== '');
+                    const sep = lines[0].includes(';') ? ';' : ',';
+                    const headers = lines[0].split(sep).map(h => h.replace(/"/g, '').trim().toLowerCase());
+                    const dniIndex = headers.findIndex(h => h.includes('dni'));
+                    if (dniIndex === -1) throw new Error("No se encontró columna 'DNI'");
+                    procesarDnis(lines.slice(1).map(l => l.split(sep)[dniIndex]?.replace(/"/g, '').trim()));
+                } catch (error) {
+                    webSalesStatus.textContent = "❌ Error: " + error.message;
+                    webSalesStatus.style.color = "#f44336";
+                }
+            };
+            reader.readAsText(file);
+        } else {
+            reader.onload = function (e) {
+                try {
+                    const workbook = XLSX.read(new Uint8Array(e.target.result), { type: 'array' });
+                    const jsonData = XLSX.utils.sheet_to_json(workbook.Sheets[workbook.SheetNames[0]]);
+                    const dniKey = Object.keys(jsonData[0] || {}).find(k => k.toLowerCase().includes('dni'));
+                    if (!dniKey) throw new Error("No se encontró columna 'DNI'");
+                    procesarDnis(jsonData.map(item => item[dniKey]?.toString().trim()));
+                } catch (error) {
+                    webSalesStatus.textContent = "❌ Error: " + error.message;
+                    webSalesStatus.style.color = "#f44336";
+                }
+            };
+            reader.readAsArrayBuffer(file);
+        }
+    });
+
+    document.getElementById('importWebBtn').addEventListener('click', function () {
+        if (entradasWeb.length === 0) return;
+        let nuevos = 0, duplicados = 0;
+        entradasWeb.forEach(dni => {
+            if (!registros.some(r => r.dni === dni && esHoyISO(r.fecha))) {
+                const socio = socios.find(s => s.dni === dni);
+                registros.push({
+                    dni: dni,
+                    nombre: socio ? socio.nombre : "Entrada Web",
+                    fecha: new Date().toISOString(),
+                    tipo: "web"
+                });
+                nuevos++;
+            } else { duplicados++; }
+        });
+        guardarRegistros();
+        actualizarRegistros();
+        document.getElementById('importSummary').innerHTML =
+            `<strong>Resumen:</strong><br>✅ Nuevos: ${nuevos}<br>⚠️ Duplicados: ${duplicados}<br>📅 Total hoy: ${registros.filter(r => esHoyISO(r.fecha)).length}`;
+    });
+
+    // ---------- Abonos ----------
+    document.getElementById('abonosFile').addEventListener('change', function (event) {
+        const file = event.target.files[0];
+        if (!file) return;
+        const abonosStatus = document.getElementById('abonosStatus');
+        const extension = file.name.split('.').pop().toLowerCase();
+        const reader = new FileReader();
+
+        const procesarDnis = (dnis) => {
+            const limpios = dnis.map(limpiarDNI).filter(Boolean);
+            if (limpios.length === 0) throw new Error("No se encontró ningún DNI válido");
+            abonosWeb = limpios;
+            localStorage.setItem('abonosWeb', JSON.stringify(abonosWeb));
+            abonosStatus.textContent = `✅ Abonos cargados: ${limpios.length}`;
+            abonosStatus.style.color = "#4caf50";
+            document.getElementById('importAbonosBtn').disabled = false;
+        };
+
+        if (extension === 'csv') {
+            reader.onload = function (e) {
+                try {
+                    let content = e.target.result;
+                    if (content.charCodeAt(0) === 0xFEFF) content = content.slice(1);
+                    const lines = content.split(/\r?\n/).filter(l => l.trim() !== '');
+                    const sep = lines[0].includes(';') ? ';' : ',';
+                    const headers = lines[0].split(sep).map(h => h.replace(/"/g, '').trim().toLowerCase());
+                    const dniIndex = headers.findIndex(h => h.includes('dni'));
+                    if (dniIndex === -1) throw new Error("No se encontró columna 'DNI'");
+                    procesarDnis(lines.slice(1).map(l => l.split(sep)[dniIndex]?.replace(/"/g, '').trim()));
+                } catch (error) {
+                    abonosStatus.textContent = "❌ Error: " + error.message;
+                    abonosStatus.style.color = "#f44336";
+                }
+            };
+            reader.readAsText(file);
+        } else {
+            reader.onload = function (e) {
+                try {
+                    const workbook = XLSX.read(new Uint8Array(e.target.result), { type: 'array' });
+                    const jsonData = XLSX.utils.sheet_to_json(workbook.Sheets[workbook.SheetNames[0]]);
+                    const dniKey = Object.keys(jsonData[0] || {}).find(k => k.toLowerCase().includes('dni'));
+                    if (!dniKey) throw new Error("No se encontró columna 'DNI'");
+                    // FIX: antes guardaba en entradasWeb por error
+                    procesarDnis(jsonData.map(item => item[dniKey]?.toString().trim()));
+                } catch (error) {
+                    abonosStatus.textContent = "❌ Error: " + error.message;
+                    abonosStatus.style.color = "#f44336";
+                }
+            };
+            reader.readAsArrayBuffer(file);
+        }
+    });
+
+    document.getElementById('importAbonosBtn').addEventListener('click', function () {
+        if (abonosWeb.length === 0) return;
+        if (socios.length === 0) {
+            document.getElementById('abonosSummary').innerHTML = "❌ Primero cargue el listado de socios";
+            return;
+        }
+        let nuevos = 0, duplicados = 0, noEncontrados = 0;
+        abonosWeb.forEach(dni => {
+            const socio = socios.find(s => s.dni === dni);
+            if (!socio) { noEncontrados++; return; }
+            if (!registros.some(r => r.dni === dni && esHoyISO(r.fecha))) {
+                registros.push({ dni, nombre: socio.nombre, fecha: new Date().toISOString(), tipo: "abono" });
+                nuevos++;
+            } else { duplicados++; }
+        });
+        guardarRegistros();
+        actualizarRegistros();
+        let html = `<strong>Resumen de abonos:</strong><br>✅ Nuevos: ${nuevos}<br>⚠️ Duplicados: ${duplicados}`;
+        if (noEncontrados > 0) html += `<br>❌ No encontrados en socios: ${noEncontrados}`;
+        html += `<br>📅 Total hoy: ${registros.filter(r => esHoyISO(r.fecha)).length}`;
+        document.getElementById('abonosSummary').innerHTML = html;
+    });
+
+    // ---------- Búsqueda manual ----------
+    const searchInput = document.getElementById('searchInput');
+    const resultsList = document.getElementById('resultsList');
+    const manualRegisterBtn = document.getElementById('manualRegisterBtn');
+
+    searchInput.addEventListener('input', function () {
+        const query = searchInput.value.trim().toLowerCase();
+        resultsList.innerHTML = '';
+        selectedSocio = null;
+        manualRegisterBtn.disabled = true;
+        if (query.length < 3) { resultsList.style.display = 'none'; return; }
+
+        const resultados = socios.filter(s =>
+            s.dni.includes(query) || s.nombre.toLowerCase().includes(query)
+        ).slice(0, 20);
+
+        resultsList.innerHTML = resultados.length > 0
+            ? resultados.map(s => `<div class="result-item" data-dni="${s.dni}"><strong>${s.nombre}</strong><br>DNI: ${s.dni}</div>`).join('')
+            : '<div class="result-item">No se encontraron socios</div>';
+        resultsList.style.display = 'block';
+
+        resultsList.querySelectorAll('.result-item[data-dni]').forEach(item => {
+            item.addEventListener('click', function () {
+                selectedSocio = socios.find(s => s.dni === this.dataset.dni);
+                searchInput.value = selectedSocio.nombre;
+                resultsList.style.display = 'none';
+                manualRegisterBtn.disabled = false;
             });
-        }
-
-        function playErrorSound() {
-            const sound = document.getElementById('errorSound');
-            sound.volume = 0.5;
-            sound.play().catch(e => console.log("No se pudo reproducir sonido:", e));
-        }
-
-
-// Función para cerrar sesión
-function cerrarSesion() {
-    if (confirm('¿Está seguro que desea cerrar sesión y volver a la pantalla de acceso?')) {
-        localStorage.removeItem('acceso_autorizado');
-        localStorage.removeItem('club_config');
-        location.reload();
-    }
-}
-
-        
-        // Inicialización
-        document.addEventListener('DOMContentLoaded', () => {
-            actualizarRegistros();
-            
-            // Para móviles: asegurar que el sonido pueda reproducirse
-            document.body.addEventListener('click', function() {
-                // Esto ayuda a desbloquear la reproducción de audio en móviles
-                document.getElementById('successSound').play().then(() => {
-                    document.getElementById('successSound').pause();
-                    document.getElementById('successSound').currentTime = 0;
-                }).catch(() => {});
-                
-                document.getElementById('errorSound').play().then(() => {
-                    document.getElementById('errorSound').pause();
-                    document.getElementById('errorSound').currentTime = 0;
-                }).catch(() => {});
-            }, { once: true });
         });
+    });
 
-        // Asegurar que se guarden los registros al cerrar
-        window.addEventListener('beforeunload', () => {
+    manualRegisterBtn.addEventListener('click', function () {
+        if (!selectedSocio) return;
+        const yaIngresado = registros.find(r => r.dni === selectedSocio.dni && esHoyISO(r.fecha));
+        if (yaIngresado) {
+            document.getElementById('abonosSummary').innerHTML = '';
+            alert(`❌ ${selectedSocio.nombre} ya ingresó hoy`);
+            return;
+        }
+        registros.push({
+            dni: selectedSocio.dni,
+            nombre: selectedSocio.nombre,
+            fecha: new Date().toISOString(),
+            tipo: "manual"
+        });
+        guardarRegistros();
+        actualizarRegistros();
+        searchInput.value = '';
+        resultsList.style.display = 'none';
+        selectedSocio = null;
+        manualRegisterBtn.disabled = true;
+        // Feedback en pantalla grande aunque esté el admin abierto
+        cerrarAdmin();
+        mostrarResultado('success', '¡BIENVENIDO!', `${registros[registros.length - 1].nombre}<br><small style="font-size:0.6em;opacity:0.85;">Ingreso manual</small>`);
+    });
+
+    // ---------- Registros ----------
+    function actualizarRegistros() {
+        const registrosHoy = registros.filter(r => esHoyISO(r.fecha));
+        const lista = document.getElementById('registros-list');
+
+        // Contador del tótem
+        document.getElementById('contadorHoy').textContent = `${registrosHoy.length} ingresos hoy`;
+
+        // Último ingreso en la barra inferior
+        const ultimo = registrosHoy[registrosHoy.length - 1];
+        document.getElementById('ultimoRegistro').textContent = ultimo
+            ? `${ultimo.nombre} · ${new Date(ultimo.fecha).toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit' })}`
+            : '—';
+
+        // Lista en admin (más recientes primero)
+        lista.innerHTML = registrosHoy.length > 0
+            ? [...registrosHoy].reverse().map(r => `
+                <div class="registro-item">
+                    <span>${r.nombre} · DNI ${r.dni}
+                        <span class="tag ${r.tipo}">${r.tipo === 'web' ? 'Web' : r.tipo === 'abono' ? 'Abono' : r.tipo === 'manual' ? 'Manual' : 'Carnet'}</span>
+                    </span>
+                    <span class="hora">${new Date(r.fecha).toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit' })}</span>
+                </div>`).join('')
+            : '<p style="color:#9a9aab;">No hay registros aún.</p>';
+    }
+
+    document.getElementById('exportBtn').addEventListener('click', function () {
+        const hoy = new Date();
+        const registrosHoy = registros.filter(r => esHoyISO(r.fecha));
+        const tipoTxt = t => t === 'web' ? 'Entrada Web' : t === 'abono' ? 'Abono/Invita' : t === 'manual' ? 'Manual' : 'Carnet';
+        let csv = "\uFEFFFecha,Hora,Nombre,DNI,Tipo\n";
+        registrosHoy.forEach(r => {
+            const f = new Date(r.fecha);
+            csv += `"${f.toLocaleDateString('es-AR')}","${f.toLocaleTimeString('es-AR')}","${r.nombre}","${r.dni}","${tipoTxt(r.tipo)}"\n`;
+        });
+        const blob = new Blob([csv], { type: 'text/csv;charset=utf-8' });
+        const a = document.createElement('a');
+        a.href = URL.createObjectURL(blob);
+        a.download = `registros_${hoy.toISOString().slice(0, 10)}.csv`;
+        a.click();
+    });
+
+    document.getElementById('clearBtn').addEventListener('click', function () {
+        if (confirm('¿Borrar todos los registros de hoy?')) {
+            registros = registros.filter(r => !esHoyISO(r.fecha));
             guardarRegistros();
+            actualizarRegistros();
+        }
+    });
+
+    document.getElementById('logoutBtn').addEventListener('click', function () {
+        if (confirm('¿Cerrar sesión y volver a la pantalla de acceso?')) {
+            localStorage.removeItem('acceso_autorizado');
+            localStorage.removeItem('club_config');
+            location.reload();
+        }
+    });
+
+    // ---------- Panel admin ----------
+    const adminOverlay = document.getElementById('adminOverlay');
+    document.getElementById('adminBtn').addEventListener('click', (e) => {
+        e.stopPropagation();
+        adminOverlay.classList.add('open');
+    });
+    function cerrarAdmin() { adminOverlay.classList.remove('open'); }
+    document.getElementById('adminCloseBtn').addEventListener('click', cerrarAdmin);
+    adminOverlay.addEventListener('click', (e) => { if (e.target === adminOverlay) cerrarAdmin(); });
+
+    document.querySelectorAll('.tab').forEach(tab => {
+        tab.addEventListener('click', () => {
+            document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+            document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+            tab.classList.add('active');
+            document.getElementById(tab.dataset.tab).classList.add('active');
         });
-        // Función para forzar la activación de la cámara
-function forzarCamara() {
-    console.log("🔄 Forzando activación de cámara...");
-    
-    // 1. Detener cualquier escáner activo
-    if (window.scanner) {
-        window.scanner.stop().then(() => {
-            console.log("✅ Escáner detenido");
-            window.scanner.clear();
-            window.scanner = null;
-            iniciarEscaneoConReset();
-        }).catch(err => {
-            console.log("⚠️ Error al detener:", err);
-            window.scanner = null;
-            iniciarEscaneoConReset();
-        });
-    } else {
-        iniciarEscaneoConReset();
+    });
+
+    // ---------- Inicialización ----------
+    window.addEventListener('beforeunload', guardarRegistros);
+
+    // Restaurar estados de archivos ya cargados (sobrevive a reinicios de la tablet)
+    if (socios.length > 0) {
+        const el = document.getElementById('csvStatus');
+        el.textContent = `✅ Socios en memoria: ${socios.length}`;
+        el.style.color = "#4caf50";
     }
-}
+    if (entradasWeb.length > 0) {
+        const el = document.getElementById('webSalesStatus');
+        el.textContent = `✅ Entradas web en memoria: ${entradasWeb.length}`;
+        el.style.color = "#4caf50";
+        document.getElementById('importWebBtn').disabled = false;
+    }
+    if (abonosWeb.length > 0) {
+        const el = document.getElementById('abonosStatus');
+        el.textContent = `✅ Abonos en memoria: ${abonosWeb.length}`;
+        el.style.color = "#4caf50";
+        document.getElementById('importAbonosBtn').disabled = false;
+    }
 
-function iniciarEscaneoConReset() {
-    // Solo intentar iniciar el escáner, sin pre-validar
+    actualizarRegistros();
     iniciarEscaneo();
-}
-
-
-
-
     </script>
 </body>
 </html>
