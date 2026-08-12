@@ -459,19 +459,12 @@ button {
     <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 
     <script>
-// Forzar pantalla completa al cargar
-document.addEventListener('DOMContentLoaded', function() {
-    if (document.documentElement.requestFullscreen) {
-        document.documentElement.requestFullscreen().catch(() => {});
-    }
-});
-
-// También al hacer clic en cualquier lugar (para tablets que lo bloquean)
+// Pantalla completa solo al hacer clic (evita errores en cargas automáticas)
 document.addEventListener('click', function() {
-    if (!document.fullscreenElement) {
+    if (!document.fullscreenElement && document.documentElement.requestFullscreen) {
         document.documentElement.requestFullscreen().catch(() => {});
     }
-});
+}, { once: true }); // Solo la primera vez
 
         
         // Función para limpiar DNI (quitar espacios, puntos, guiones)
@@ -1266,14 +1259,12 @@ function importarAbonos() {
 
         // Iniciar escáner
         function iniciarEscaneo() {
-    // Verificar si el contenedor existe
     const readerContainer = document.getElementById('reader');
     if (!readerContainer) {
         console.error("❌ Contenedor #reader no encontrado");
         return;
     }
 
-    // Si ya está escaneando, no hacer nada
     if (window.scanner && window.scanner.isScanning) {
         console.log("✅ Escáner ya activo");
         return;
@@ -1281,7 +1272,6 @@ function importarAbonos() {
 
     console.log("📷 Iniciando escáner...");
 
-    // Limpiar el contenedor
     readerContainer.innerHTML = '';
     readerContainer.style.display = 'block';
     readerContainer.style.minHeight = '400px';
@@ -1289,7 +1279,6 @@ function importarAbonos() {
     readerContainer.style.background = '#000';
 
     try {
-        // Crear nueva instancia del escáner
         window.scanner = new Html5Qrcode("reader");
         
         const config = {
@@ -1297,19 +1286,14 @@ function importarAbonos() {
             qrbox: { width: 300, height: 300 }
         };
 
-        // IMPORTANTE: NO llamamos a mostrarErrorCamara() aquí
+        // ✅ CONFIGURACIÓN SIMPLIFICADA - SOLO EL FACING MODE
         window.scanner.start(
-            { 
-                facingMode: "environment",
-                width: { ideal: 640 },
-                height: { ideal: 480 }
-            },
+            { facingMode: "environment" },
             config,
             (decodedText) => {
                 procesarQR(decodedText);
             },
             (error) => {
-                // Solo mostrar errores importantes en consola
                 if (error && !error.includes("NotFoundException") && !error.includes("No MultiFormat")) {
                     console.log("Error escáner:", error);
                 }
@@ -1318,7 +1302,6 @@ function importarAbonos() {
             console.log("✅ Escáner activo correctamente");
         }).catch(err => {
             console.error("❌ Error al iniciar escáner:", err);
-            // SOLO AQUÍ mostramos el error
             mostrarErrorCamara();
         });
         
