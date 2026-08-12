@@ -1281,7 +1281,7 @@ function importarAbonos() {
 
     console.log("📷 Iniciando escáner...");
 
-    // Limpiar el contenedor por si tiene errores previos
+    // Limpiar el contenedor
     readerContainer.innerHTML = '';
     readerContainer.style.display = 'block';
     readerContainer.style.minHeight = '400px';
@@ -1297,10 +1297,10 @@ function importarAbonos() {
             qrbox: { width: 300, height: 300 }
         };
 
+        // IMPORTANTE: NO llamamos a mostrarErrorCamara() aquí
         window.scanner.start(
             { 
                 facingMode: "environment",
-                // Usar resolución específica para mejor compatibilidad
                 width: { ideal: 640 },
                 height: { ideal: 480 }
             },
@@ -1309,7 +1309,7 @@ function importarAbonos() {
                 procesarQR(decodedText);
             },
             (error) => {
-                // Solo mostrar errores relevantes
+                // Solo mostrar errores importantes en consola
                 if (error && !error.includes("NotFoundException") && !error.includes("No MultiFormat")) {
                     console.log("Error escáner:", error);
                 }
@@ -1318,12 +1318,13 @@ function importarAbonos() {
             console.log("✅ Escáner activo correctamente");
         }).catch(err => {
             console.error("❌ Error al iniciar escáner:", err);
+            // SOLO AQUÍ mostramos el error
             mostrarErrorCamara();
         });
         
     } catch (e) {
         console.error("❌ Error al crear escáner:", e);
-        readerContainer.innerHTML = `<div style="color: white; text-align: center; padding: 40px;">❌ Error al iniciar la cámara. Verifica los permisos.</div>`;
+        mostrarErrorCamara();
     }
 }
 
@@ -1666,26 +1667,8 @@ function forzarCamara() {
 }
 
 function iniciarEscaneoConReset() {
-    // 2. Solicitar permiso de cámara explícitamente
-    navigator.mediaDevices.getUserMedia({ 
-        video: { 
-            facingMode: "environment",
-            width: { ideal: 640 },
-            height: { ideal: 480 }
-        } 
-    })
-    .then(function(stream) {
-        // 3. Si hay permiso, detener el stream temporal
-        stream.getTracks().forEach(track => track.stop());
-        console.log("✅ Permiso de cámara concedido");
-        
-        // 4. Iniciar el escáner
-        iniciarEscaneo();
-    })
-    .catch(function(err) {
-        console.error("❌ Error de cámara:", err);
-        mostrarErrorCamara();
-    });
+    // Solo intentar iniciar el escáner, sin pre-validar
+    iniciarEscaneo();
 }
 
 function mostrarErrorCamara() {
