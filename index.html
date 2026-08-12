@@ -624,13 +624,18 @@
     }
     function playSuccessSound() {
         initAudio();
-        tono(880, 0, 0.14, 'sine', 0.3);
-        tono(1320, 0.13, 0.22, 'sine', 0.3);
+        // Doble capa (fundamental + octava) para mayor volumen percibido
+        tono(880, 0, 0.16, 'sine', 0.9);
+        tono(1760, 0, 0.16, 'sine', 0.35);
+        tono(1320, 0.15, 0.28, 'sine', 0.9);
+        tono(2640, 0.15, 0.28, 'sine', 0.3);
     }
     function playErrorSound() {
         initAudio();
-        tono(220, 0, 0.22, 'square', 0.16);
-        tono(180, 0.2, 0.3, 'square', 0.16);
+        tono(220, 0, 0.28, 'square', 0.55);
+        tono(110, 0, 0.28, 'square', 0.4);
+        tono(180, 0.26, 0.4, 'square', 0.55);
+        tono(90, 0.26, 0.4, 'square', 0.4);
     }
 
     // ---------- Reloj ----------
@@ -819,7 +824,7 @@
         if (scannerActivo) return;
 
         readerContainer.innerHTML = '';
-        scanner = new Html5Qrcode("reader", { verbose: false });
+        scanner = crearScanner();
 
         const config = {
             fps: 10,
@@ -864,6 +869,29 @@
             });
     }
 
+    // Escáner con soporte para QR y códigos de barra de carnets
+    function crearScanner() {
+        const opciones = { verbose: false };
+        if (typeof Html5QrcodeSupportedFormats !== 'undefined') {
+            opciones.formatsToSupport = [
+                Html5QrcodeSupportedFormats.QR_CODE,
+                Html5QrcodeSupportedFormats.CODE_128,
+                Html5QrcodeSupportedFormats.CODE_39,
+                Html5QrcodeSupportedFormats.CODE_93,
+                Html5QrcodeSupportedFormats.EAN_13,
+                Html5QrcodeSupportedFormats.EAN_8,
+                Html5QrcodeSupportedFormats.UPC_A,
+                Html5QrcodeSupportedFormats.UPC_E,
+                Html5QrcodeSupportedFormats.ITF,
+                Html5QrcodeSupportedFormats.CODABAR,
+                Html5QrcodeSupportedFormats.DATA_MATRIX,
+                Html5QrcodeSupportedFormats.PDF_417,
+                Html5QrcodeSupportedFormats.AZTEC
+            ];
+        }
+        return new Html5Qrcode("reader", opciones);
+    }
+
     async function cambiarCamara() {
         if (!scanner) return;
         try {
@@ -876,7 +904,7 @@
             // Reiniciar con la cámara específica
             const readerContainer = document.getElementById('reader');
             readerContainer.innerHTML = '';
-            scanner = new Html5Qrcode("reader", { verbose: false });
+            scanner = crearScanner();
             const config = {
                 fps: 10,
                 qrbox: (w, h) => {
@@ -1191,8 +1219,18 @@
         if (!selectedSocio) return;
         const yaIngresado = registros.find(r => r.dni === selectedSocio.dni && esHoyISO(r.fecha));
         if (yaIngresado) {
-            document.getElementById('abonosSummary').innerHTML = '';
-            alert(`❌ ${selectedSocio.nombre} ya ingresó hoy`);
+            const socioDup = selectedSocio;
+            const tipoTxt = yaIngresado.tipo === 'web' ? 'ENTRADA WEB' :
+                            yaIngresado.tipo === 'abono' ? 'ABONADO' :
+                            yaIngresado.tipo === 'manual' ? 'MANUAL' : 'CARNET';
+            const hora = new Date(yaIngresado.fecha).toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit' });
+            searchInput.value = '';
+            resultsList.style.display = 'none';
+            selectedSocio = null;
+            manualRegisterBtn.disabled = true;
+            cerrarAdmin();
+            mostrarResultado('error', 'YA INGRESÓ HOY',
+                `${socioDup.nombre}<br>DNI: <span class="mono">${socioDup.dni}</span><br><small style="font-size:0.6em;opacity:0.85;">Ingresó ${hora} · ${tipoTxt}</small>`);
             return;
         }
         registros.push({
