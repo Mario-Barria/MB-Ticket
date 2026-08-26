@@ -459,6 +459,7 @@
             </div>
             <div class="right">
                 <span id="reloj"></span>
+                <span id="onlineBadge" style="display:none;background:#4caf50;color:#000;font-weight:800;font-size:12px;padding:5px 10px;border-radius:999px;">🌐 ONLINE</span>
                 <span id="contadorHoy">0 ingresos hoy</span>
                 <button class="icon-btn" id="camSwitchBtn" title="Cambiar cámara">🔃</button>
                 <button class="icon-btn" id="fullscreenBtn" title="Pantalla completa">⛶</button>
@@ -504,6 +505,7 @@
                     <div class="tab" data-tab="web">Entradas Web</div>
                     <div class="tab" data-tab="abonos">Abonos/Invita</div>
                     <div class="tab" data-tab="manual">Ingreso Manual</div>
+                    <div class="tab" data-tab="online">🌐 Conexión Online</div>
                     <div class="tab" data-tab="registros">Registros e Informe</div>
                 </div>
 
@@ -557,6 +559,30 @@
                             <div id="resultsList"></div>
                         </div>
                         <button class="action" id="manualRegisterBtn" disabled>Registrar Ingreso Manual</button>
+                    </div>
+                </div>
+
+                <div id="online" class="tab-content">
+                    <div class="panel">
+                        <h3 class="panel-title">Conexión con clubes.mbticket.com.ar</h3>
+                        <p style="font-size:13px;color:#9a9aab;line-height:1.6">
+                            Con la conexión online, cada escaneo consulta la base del club en vivo:<br>
+                            cuota al día, apto físico, suspensión e historial quedan registrados solos.<br>
+                            La clave API la da el club (Panel → Configuración → Conexión del tótem).<br>
+                            <strong>Sin conexión, el tótem sigue funcionando con el listado CSV (modo offline).</strong>
+                        </p>
+                        <label style="display:block;margin:12px 0 4px;font-size:13px;color:#9a9aab">Dirección del sistema</label>
+                        <input type="text" id="apiUrl" value="https://clubes.mbticket.com.ar" style="width:100%;padding:12px;border:1px solid #4a4a5a;border-radius:10px;background:rgba(0,0,0,0.4);color:#e0e0e0;font-size:15px;">
+                        <label style="display:block;margin:12px 0 4px;font-size:13px;color:#9a9aab">Clave API del club</label>
+                        <input type="text" id="apiKey" placeholder="Pegue aquí la clave de 40 caracteres" style="width:100%;padding:12px;border:1px solid #4a4a5a;border-radius:10px;background:rgba(0,0,0,0.4);color:#e0e0e0;font-size:15px;font-family:monospace;">
+                        <button class="action" id="conectarBtn" style="background:#00aaff;color:#000;">🔗 Conectar y traer actividades</button>
+                        <div id="onlineSetup" style="display:none;margin-top:12px;">
+                            <label style="display:block;margin:0 0 4px;font-size:13px;color:#9a9aab">Puerta / actividad de este tótem</label>
+                            <select id="apiActividad" style="width:100%;padding:12px;border:1px solid #4a4a5a;border-radius:10px;background:rgba(0,0,0,0.4);color:#e0e0e0;font-size:15px;"></select>
+                            <button class="action" id="guardarOnlineBtn" style="background:#4caf50;">✅ Activar modo online</button>
+                        </div>
+                        <p id="onlineStatus" class="file-status"></p>
+                        <button class="action" id="desconectarBtn" style="background:#f44336;display:none;">Desactivar modo online (volver a CSV)</button>
                     </div>
                 </div>
 
@@ -949,8 +975,91 @@
         iniciarEscaneo();
     }
 
-    // ---------- Procesar QR ----------
-    function procesarQR(qrContent) {
+    // ---------- Modo Online (conexión con clubes.mbticket.com.ar) ----------
+    let onlineCfg = JSON.parse(localStorage.getItem('mbt_online') || 'null');
+
+    function actualizarBadgeOnline() {
+        const badge = document.getElementById('onlineBadge');
+        const status = document.getElementById('onlineStatus');
+        const btnOff = document.getElementById('desconectarBtn');
+        if (onlineCfg && onlineCfg.key) {
+            badge.style.display = 'inline-block';
+            btnOff.style.display = 'block';
+            status.textContent = `✅ Modo online activo — ${onlineCfg.club} · Puerta: ${onlineCfg.actividadNombre}`;
+            status.style.color = '#4caf50';
+            document.getElementById('apiKey').value = onlineCfg.key;
+            document.getElementById('apiUrl').value = onlineCfg.url;
+        } else {
+            badge.style.display = 'none';
+            btnOff.style.display = 'none';
+        }
+    }
+
+    async function consultarAccesoOnline(token) {
+        const ctrl = new AbortController();
+        const timeout = setTimeout(() => ctrl.abort(), 6000); // 6s máximo
+        const resp = await fetch(`${onlineCfg.url}/api/acceso.php`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+            body: new URLSearchParams({
+                key: onlineCfg.key,
+                token: token,
+                actividad: onlineCfg.actividadId || 0
+            }),
+            signal: ctrl.signal
+        });
+        clearTimeout(timeout);
+        return resp.json();
+    }
+
+    function mostrarResultadoOnline(r) {
+        const nombre = (r.apellido && r.nombre) ? `${r.apellido}, ${r.nombre}` : (r.nombre || '');
+        const detalle = nombre
+            ? `${nombre}<br>DNI: <span class="mono">${r.dni || ''}</span>${r.categoria ? ' · ' + r.categoria : ''}<br><small style="font-size:0.6em;opacity:0.85;">${r.mensaje || ''}</small>`
+            : (r.mensaje || '');
+        switch (r.resultado) {
+            case 'ok':
+                mostrarResultado('success', '¡BIENVENIDO!', detalle);
+                break;
+            case 'duplicado':
+                mostrarResultado('error', 'YA INGRESÓ HOY', detalle);
+                break;
+            case 'moroso':
+                mostrarResultado('warning', '⚠️ CUOTA VENCIDA', detalle);
+                break;
+            case 'apto_vencido':
+                mostrarResultado('warning', '⚠️ APTO VENCIDO', detalle);
+                break;
+            case 'suspendido':
+                mostrarResultado('error', 'SOCIO SUSPENDIDO', detalle);
+                break;
+            case 'no_registrado':
+                mostrarResultado('error', 'NO REGISTRADO', 'Credencial no reconocida por el club');
+                break;
+            default:
+                mostrarResultado('error', 'ERROR', r.mensaje || 'Error de consulta');
+        }
+    }
+
+    // ---------- Procesar QR (decide online u offline) ----------
+    async function procesarQR(qrContent) {
+        if (onlineCfg && onlineCfg.key && navigator.onLine !== false) {
+            try {
+                const r = await consultarAccesoOnline(qrContent.trim());
+                mostrarResultadoOnline(r);
+                return;
+            } catch (e) {
+                console.warn('⚠️ Sin conexión con el servidor, usando modo offline:', e);
+                mostrarResultado('warning', 'MODO OFFLINE', 'Sin conexión al servidor.<br>Se verifica con el listado local.');
+                // pequeña pausa para que se lea el aviso y luego evaluar local
+                await new Promise(res => setTimeout(res, 900));
+            }
+        }
+        procesarQRlocal(qrContent);
+    }
+
+    // ---------- Procesar QR en modo offline (listado CSV local) ----------
+    function procesarQRlocal(qrContent) {
         console.log("📷 QR escaneado:", qrContent);
 
         if (socios.length === 0) {
@@ -1349,6 +1458,58 @@
         document.getElementById('importAbonosBtn').disabled = false;
     }
 
+    // ---------- Configuración del modo online ----------
+    document.getElementById('conectarBtn').addEventListener('click', async () => {
+        const url = document.getElementById('apiUrl').value.trim().replace(/\/+$/, '');
+        const key = document.getElementById('apiKey').value.trim();
+        const status = document.getElementById('onlineStatus');
+        if (!key) { status.textContent = '❌ Pegue la clave API'; status.style.color = '#f44336'; return; }
+        status.textContent = 'Conectando...'; status.style.color = '#9a9aab';
+        try {
+            const resp = await fetch(`${url}/api/actividades.php?key=${encodeURIComponent(key)}`);
+            const data = await resp.json();
+            if (data.error) throw new Error(data.error);
+            const sel = document.getElementById('apiActividad');
+            sel.innerHTML = '<option value="0">— Acceso general (sin actividad) —</option>' +
+                data.actividades.map(a => `<option value="${a.id}">${a.nombre}${a.requiere_apto == 1 ? ' (exige apto)' : ''}</option>`).join('');
+            document.getElementById('onlineSetup').style.display = 'block';
+            status.textContent = `✅ Conectado a «${data.club}». Elegí la puerta y activá el modo online.`;
+            status.style.color = '#4caf50';
+            window._clubOnlineTmp = { url, key, club: data.club, color: data.color };
+        } catch (e) {
+            status.textContent = '❌ No se pudo conectar: ' + e.message;
+            status.style.color = '#f44336';
+        }
+    });
+
+    document.getElementById('guardarOnlineBtn').addEventListener('click', () => {
+        const tmp = window._clubOnlineTmp;
+        if (!tmp) return;
+        const sel = document.getElementById('apiActividad');
+        onlineCfg = {
+            url: tmp.url,
+            key: tmp.key,
+            club: tmp.club,
+            actividadId: parseInt(sel.value, 10),
+            actividadNombre: sel.options[sel.selectedIndex].text
+        };
+        localStorage.setItem('mbt_online', JSON.stringify(onlineCfg));
+        actualizarBadgeOnline();
+        cerrarAdmin();
+        mostrarResultado('success', 'MODO ONLINE', `Conectado a ${onlineCfg.club}<br>Puerta: ${onlineCfg.actividadNombre}`);
+    });
+
+    document.getElementById('desconectarBtn').addEventListener('click', () => {
+        if (confirm('¿Volver al modo offline (listado CSV)?')) {
+            onlineCfg = null;
+            localStorage.removeItem('mbt_online');
+            actualizarBadgeOnline();
+            document.getElementById('onlineStatus').textContent = 'Modo online desactivado.';
+            document.getElementById('onlineStatus').style.color = '#9a9aab';
+        }
+    });
+
+    actualizarBadgeOnline();
     actualizarRegistros();
     iniciarEscaneo();
     </script>
