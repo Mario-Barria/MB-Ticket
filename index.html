@@ -1178,7 +1178,7 @@
                 mostrarResultado('error', 'YA INGRESÓ HOY', detalle);
                 break;
             case 'moroso':
-                mostrarResultado('warning', '⚠️ CUOTA VENCIDA', detalle);
+                mostrarResultado('warning', (r.categoria || '').includes('Abonado') ? '⚠️ ABONADO — DEBE CUOTAS' : '⚠️ CUOTA VENCIDA', detalle);
                 break;
             case 'apto_vencido':
                 mostrarResultado('warning', '⚠️ APTO VENCIDO', detalle);
