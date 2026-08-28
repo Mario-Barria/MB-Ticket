@@ -698,18 +698,105 @@
 
     function verificarAcceso() {
         if (localStorage.getItem('acceso_autorizado') === 'true') return true;
-        mostrarPantallaAcceso();
+        mostrarPantallaAcceso(false);
         return false;
     }
 
-    function mostrarPantallaAcceso() {
+    // ---------- Pantalla de acceso: se entra con la CLAVE API del club ----------
+    // (la misma que está en Panel del club → Configuración → Conexión del tótem)
+    function mostrarPantallaAcceso(modoCSV) {
+        if (modoCSV) { mostrarPantallaAccesoCSV(); return; }
+        document.body.innerHTML = `
+        <div style="display:flex;justify-content:center;align-items:center;min-height:100vh;min-height:100dvh;background:#000;font-family:'Inter','Segoe UI',sans-serif;color:#e0e0e0;text-align:center;padding:20px;">
+            <div style="background:rgba(30,30,36,0.95);padding:36px 28px;border-radius:20px;border:1px solid #4a4a5a;max-width:440px;width:94%;box-shadow:0 12px 50px rgba(0,0,0,0.6);">
+                <div style="margin-bottom:20px;">
+                    <div style="font-size:44px;margin-bottom:6px;">🎫</div>
+                    <h1 style="margin:0 0 4px;font-size:24px;font-weight:800;color:#fff;">MB TICKET</h1>
+                    <p style="margin:0;color:#9a9aab;font-size:13px;">Tótem de control de acceso</p>
+                </div>
+                <h2 style="margin:0 0 12px;font-size:16px;font-weight:600;color:#00aaff;">🔑 Conectar con tu club</h2>
+                <p style="margin:0 0 14px;font-size:12px;color:#9a9aab;line-height:1.5;">La clave API está en el panel del club:<br><strong>Configuración → Conexión del tótem</strong></p>
+                <input type="text" id="inputApiUrl" value="https://clubes.mbticket.com.ar"
+                    style="width:100%;padding:12px;border:1px solid #4a4a5a;border-radius:10px;background:rgba(0,0,0,0.5);color:#e0e0e0;font-size:13px;margin-bottom:10px;box-sizing:border-box;font-family:monospace;">
+                <input type="password" id="inputApiKey" placeholder="Clave API del club" autocomplete="off"
+                    style="width:100%;padding:14px;border:1px solid #4a4a5a;border-radius:10px;background:rgba(0,0,0,0.5);color:#e0e0e0;font-size:15px;margin-bottom:12px;box-sizing:border-box;font-family:monospace;">
+                <button onclick="conectarAcceso()" id="btnConectar"
+                    style="width:100%;background:#00aaff;color:#000;border:none;padding:14px;border-radius:10px;font-weight:800;font-size:16px;cursor:pointer;">
+                    Conectar
+                </button>
+                <div id="accesoStatus" style="margin-top:12px;font-size:13px;color:#9a9aab;min-height:18px;"></div>
+                <div id="accesoPuerta" style="display:none;margin-top:6px;">
+                    <select id="accesoActividad" style="width:100%;padding:12px;border:1px solid #4a4a5a;border-radius:10px;background:rgba(0,0,0,0.5);color:#e0e0e0;font-size:15px;margin-bottom:10px;box-sizing:border-box;"></select>
+                    <button onclick="entrarSistema()" style="width:100%;background:#4caf50;color:#000;border:none;padding:14px;border-radius:10px;font-weight:800;font-size:16px;cursor:pointer;">Entrar al tótem</button>
+                </div>
+                <div style="border-top:1px solid #4a4a5a;margin-top:18px;padding-top:14px;">
+                    <a href="#" onclick="mostrarPantallaAcceso(true);return false;" style="color:#9a9aab;font-size:12px;">🔌 Usar sin conexión (modo listado CSV)</a>
+                </div>
+                <div style="margin-top:12px;">
+                    <p style="margin:0;font-size:11px;color:#9a9aab;">💼 <strong>MB Ticket Solutions</strong> · 📞 +54 9 297 403-8368</p>
+                </div>
+            </div>
+        </div>`;
+        setTimeout(() => document.getElementById('inputApiKey').focus(), 100);
+        document.getElementById('inputApiKey').addEventListener('keypress', function (e) {
+            if (e.key === 'Enter') conectarAcceso();
+        });
+    }
+
+    // Paso 1: conectar con la clave API (valida contra el sistema del club)
+    async function conectarAcceso() {
+        const url = document.getElementById('inputApiUrl').value.trim().replace(/\/+$/, '');
+        const key = document.getElementById('inputApiKey').value.trim();
+        const status = document.getElementById('accesoStatus');
+        if (!key) { status.textContent = '❌ Pegá la clave API'; status.style.color = '#f44336'; return; }
+        status.textContent = 'Conectando...'; status.style.color = '#9a9aab';
+        document.getElementById('btnConectar').disabled = true;
+        try {
+            const resp = await fetch(`${url}/api/actividades.php?key=${encodeURIComponent(key)}`);
+            const data = await resp.json();
+            if (data.error) throw new Error(data.error);
+            window._accesoTmp = { url, key, club: data.club, color: data.color || '#00aaff', logo: data.logo || null };
+            const sel = document.getElementById('accesoActividad');
+            sel.innerHTML = '<option value="0">— Acceso general —</option>' +
+                data.actividades.map(a => `<option value="${a.id}">${a.nombre}${a.requiere_apto == 1 ? ' (exige apto)' : ''}</option>`).join('');
+            document.getElementById('accesoPuerta').style.display = 'block';
+            status.textContent = `✅ «${data.club}» conectado. Elegí la puerta:`;
+            status.style.color = '#4caf50';
+        } catch (e) {
+            status.textContent = '❌ No se pudo conectar: ' + e.message;
+            status.style.color = '#f44336';
+        }
+        document.getElementById('btnConectar').disabled = false;
+    }
+
+    // Paso 2: guardar configuración y entrar
+    function entrarSistema() {
+        const tmp = window._accesoTmp;
+        if (!tmp) return;
+        const sel = document.getElementById('accesoActividad');
+        localStorage.setItem('club_config', JSON.stringify({
+            nombre: tmp.club,
+            colores: { primario: tmp.color, secundario: '#0d1b2a' },
+            logo: tmp.logo
+        }));
+        localStorage.setItem('mbt_online', JSON.stringify({
+            url: tmp.url, key: tmp.key, club: tmp.club,
+            actividadId: parseInt(sel.value, 10),
+            actividadNombre: sel.options[sel.selectedIndex].text
+        }));
+        localStorage.setItem('acceso_autorizado', 'true');
+        location.reload();
+    }
+
+    // ---------- Pantalla de acceso SIN conexión (modo CSV, claves fijas) ----------
+    function mostrarPantallaAccesoCSV() {
         document.body.innerHTML = `
         <div style="display:flex;justify-content:center;align-items:center;height:100vh;height:100dvh;background:#000;font-family:'Inter','Segoe UI',sans-serif;color:#e0e0e0;text-align:center;padding:20px;">
             <div style="background:rgba(30,30,36,0.95);padding:40px 30px;border-radius:20px;border:1px solid #4a4a5a;max-width:420px;width:92%;box-shadow:0 12px 50px rgba(0,0,0,0.6);">
                 <div style="margin-bottom:24px;">
                     <div style="font-size:46px;margin-bottom:8px;">🎫</div>
                     <h1 style="margin:0 0 4px;font-size:24px;font-weight:800;color:#fff;">MB TICKET</h1>
-                    <p style="margin:0;color:#9a9aab;font-size:13px;">Sistema Profesional de Control de Acceso</p>
+                    <p style="margin:0;color:#9a9aab;font-size:13px;">Modo sin conexión (listado CSV)</p>
                 </div>
                 <div style="margin-bottom:22px;">
                     <h2 style="margin:0 0 14px;font-size:17px;font-weight:600;color:#00aaff;">🔒 Acceso Restringido</h2>
@@ -720,11 +807,7 @@
                         Ingresar al Sistema
                     </button>
                 </div>
-                <div style="border-top:1px solid #4a4a5a;padding-top:16px;">
-                    <p style="margin:0 0 6px;font-size:12px;color:#9a9aab;">💼 <strong>MB Ticket Solutions</strong></p>
-                    <p style="margin:0 0 4px;font-size:11px;color:#9a9aab;">📞 +54 9 297 403-8368</p>
-                    <p style="margin:0;font-size:11px;color:#9a9aab;">✉️ soporte@mbticket.com</p>
-                </div>
+                <a href="#" onclick="mostrarPantallaAcceso(false);return false;" style="color:#9a9aab;font-size:12px;">← Volver al modo online</a>
                 <div id="intentosInfo" style="margin-top:14px;font-size:12px;color:#9a9aab;">Intentos restantes: 3</div>
             </div>
         </div>`;
@@ -778,8 +861,12 @@
         document.documentElement.style.setProperty('--club', clubConfig.colores.primario);
         document.getElementById('clubNombre').textContent = clubConfig.nombre;
         const logoImg = document.getElementById('clubLogo');
-        logoImg.src = clubConfig.logo;
-        logoImg.onerror = () => { logoImg.style.display = 'none'; };
+        if (clubConfig.logo) {
+            logoImg.src = clubConfig.logo;
+            logoImg.onerror = () => { logoImg.style.display = 'none'; };
+        } else {
+            logoImg.style.display = 'none';
+        }
         document.title = `Control Acceso - ${clubConfig.nombre}`;
     }
 
@@ -1057,6 +1144,42 @@
         }
         procesarQRlocal(qrContent);
     }
+
+    // ---------- Lector QR físico (USB / Bluetooth, modo "teclado") ----------
+    // Estos lectores "tipean" el código muy rápido y terminan con Enter.
+    // Acumulamos las teclas que llegan con <100ms entre sí y al llegar
+    // Enter procesamos el código como si lo hubiera leído la cámara.
+    let bufferLector = '';
+    let ultimaTeclaLector = 0;
+    document.addEventListener('keydown', (e) => {
+        // No interferir cuando el usuario escribe en un campo o usa el panel admin
+        const tag = (e.target && e.target.tagName) || '';
+        if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT') { bufferLector = ''; return; }
+        const adminOv = document.getElementById('adminOverlay');
+        if (adminOv && adminOv.classList.contains('open')) { bufferLector = ''; return; }
+        // Ignorar mientras se muestra el resultado de un escaneo anterior
+        if (scanBloqueado) return;
+
+        const ahora = Date.now();
+        if (e.key === 'Enter') {
+            if (bufferLector.length >= 4 && (ahora - ultimaTeclaLector) < 200) {
+                const codigo = bufferLector;
+                bufferLector = '';
+                scanBloqueado = true;
+                try { if (scanner && scannerActivo) scanner.pause(true); } catch (err) {}
+                procesarQR(codigo);
+            } else {
+                bufferLector = '';
+            }
+            return;
+        }
+        // Solo caracteres simples (letras, números, símbolos del QR)
+        if (e.key.length === 1) {
+            if ((ahora - ultimaTeclaLector) > 100) bufferLector = ''; // tipeo humano: reiniciar
+            bufferLector += e.key;
+            ultimaTeclaLector = ahora;
+        }
+    });
 
     // ---------- Procesar QR en modo offline (listado CSV local) ----------
     function procesarQRlocal(qrContent) {
