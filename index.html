@@ -718,8 +718,12 @@
                 <p style="margin:0 0 14px;font-size:12px;color:#9a9aab;line-height:1.5;">La clave API está en el panel del club:<br><strong>Configuración → Conexión del tótem</strong></p>
                 <input type="text" id="inputApiUrl" value="https://clubes.mbticket.com.ar"
                     style="width:100%;padding:12px;border:1px solid #4a4a5a;border-radius:10px;background:rgba(0,0,0,0.5);color:#e0e0e0;font-size:13px;margin-bottom:10px;box-sizing:border-box;font-family:monospace;">
-                <input type="password" id="inputApiKey" placeholder="Clave API del club" autocomplete="off"
-                    style="width:100%;padding:14px;border:1px solid #4a4a5a;border-radius:10px;background:rgba(0,0,0,0.5);color:#e0e0e0;font-size:15px;margin-bottom:12px;box-sizing:border-box;font-family:monospace;">
+                <div style="position:relative;margin-bottom:12px;">
+                    <input type="password" id="inputApiKey" placeholder="Clave API del club" autocomplete="off"
+                        style="width:100%;padding:14px;padding-right:52px;border:1px solid #4a4a5a;border-radius:10px;background:rgba(0,0,0,0.5);color:#e0e0e0;font-size:15px;box-sizing:border-box;font-family:monospace;">
+                    <button type="button" onclick="const i=document.getElementById('inputApiKey');i.type=i.type==='password'?'text':'password';this.textContent=i.type==='password'?'👁️':'🙈';"
+                        style="position:absolute;right:6px;top:50%;transform:translateY(-50%);background:none;border:none;font-size:20px;cursor:pointer;padding:6px;" title="Ver la clave">👁️</button>
+                </div>
                 <button onclick="conectarAcceso()" id="btnConectar"
                     style="width:100%;background:#00aaff;color:#000;border:none;padding:14px;border-radius:10px;font-weight:800;font-size:16px;cursor:pointer;">
                     Conectar
@@ -851,6 +855,45 @@
         </div>`;
     }
 
+    // ---------- Acceso por LINK MÁGICO (?u=URL&k=CLAVE) ----------
+    // El link se genera en Configuración → Conexión del tótem y se manda
+    // por WhatsApp al personal: al abrirlo entra directo sin escribir nada.
+    const paramsAcceso = new URLSearchParams(location.search);
+    const linkUrl = paramsAcceso.get('u'), linkKey = paramsAcceso.get('k');
+
+    if (linkUrl && linkKey && localStorage.getItem('acceso_autorizado') !== 'true') {
+        accesoPorLink(linkUrl, linkKey);
+        throw new Error("Conectando por link de acceso..."); // frena el resto del script
+    }
+
+    async function accesoPorLink(url, key) {
+        url = url.replace(/\/+$/, '');
+        document.body.innerHTML = `
+        <div style="display:flex;justify-content:center;align-items:center;min-height:100vh;background:#000;font-family:'Inter',sans-serif;color:#e0e0e0;text-align:center;padding:20px;">
+            <div><div style="font-size:46px;margin-bottom:12px;">🎫</div>
+            <p id="linkStatus" style="color:#9a9aab;">Conectando con el club...</p></div>
+        </div>`;
+        try {
+            const resp = await fetch(`${url}/api/actividades.php?key=${encodeURIComponent(key)}`);
+            const data = await resp.json();
+            if (data.error) throw new Error(data.error);
+            localStorage.setItem('club_config', JSON.stringify({
+                nombre: data.club,
+                colores: { primario: data.color || '#00aaff', secundario: '#0d1b2a' },
+                logo: data.logo || null
+            }));
+            localStorage.setItem('mbt_online', JSON.stringify({
+                url, key, club: data.club, actividadId: 0, actividadNombre: 'Acceso general'
+            }));
+            localStorage.setItem('acceso_autorizado', 'true');
+            // Recarga limpia, sin la clave visible en la barra de direcciones
+            location.replace(location.pathname);
+        } catch (e) {
+            // Si el link falla, mostrar la pantalla de acceso normal
+            mostrarPantallaAcceso(false);
+        }
+    }
+
     if (!verificarAcceso()) {
         throw new Error("Acceso no autorizado");
     }
@@ -960,9 +1003,32 @@
         };
 
         scanner.start({ facingMode: "environment" }, config, onScan, () => {})
-            .then(() => {
+            .then(async () => {
                 scannerActivo = true;
                 console.log("✅ Escáner activo (cámara trasera)");
+                // Algunos celulares ignoran facingMode y abren la frontal.
+                // Verificamos la cámara real y si es frontal, cambiamos a la trasera.
+                try {
+                    camaras = await Html5Qrcode.getCameras();
+                    if (camaras && camaras.length > 1) {
+                        const idxTrasera = camaras.findIndex(c => /back|rear|trasera|environment/i.test(c.label));
+                        // Detectar qué cámara quedó realmente activa
+                        const video = document.querySelector('#reader video');
+                        const track = video && video.srcObject ? video.srcObject.getVideoTracks()[0] : null;
+                        const labelActiva = track ? (track.label || '') : '';
+                        const esTrasera = /back|rear|trasera|environment/i.test(labelActiva);
+                        if (idxTrasera >= 0 && !esTrasera) {
+                            // Si la actual no es la trasera, reiniciar directo con el ID de la trasera
+                            await scanner.stop();
+                            scanner.clear();
+                            readerContainer.innerHTML = '';
+                            scanner = crearScanner();
+                            camaraActual = idxTrasera;
+                            await scanner.start(camaras[camaraActual].id, config, onScan, () => {});
+                            console.log("✅ Cambiado a cámara trasera:", camaras[camaraActual].label);
+                        }
+                    }
+                } catch (e) { console.warn("No se pudo verificar la cámara:", e); }
             })
             .catch(async (err) => {
                 console.warn("⚠️ facingMode falló, buscando cámaras...", err);
