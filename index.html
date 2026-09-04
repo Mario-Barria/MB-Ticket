@@ -908,23 +908,45 @@
             procesarQR(decodedText);
         };
 
-        // Elegir la cámara trasera ANTES de abrir (evita el "parpadeo" de
-        // abrir la frontal y tener que cambiar). Estrategia: listar las
-        // cámaras, preferir la trasera por nombre; si no hay pistas, usar la
-        // ÚLTIMA de la lista (en Android la trasera suele ser la última).
-        // Un solo start(): nunca se abre la frontal primero.
+        // Elegir la cámara TRASERA (la que enfoca hacia afuera) antes de abrir
+        // el escáner, para no mostrar nunca la selfie.
+        //
+        // El problema: sin permiso de cámara, getCameras() devuelve los
+        // dispositivos SIN nombre, y no se puede saber cuál es la trasera.
+        // Solución: pedir permiso con una mini-apertura getUserMedia pidiendo
+        // explícitamente "environment", cerrar ese stream al instante y
+        // enumerar de nuevo (ahora los nombres vienen completos). Luego abrir
+        // el escáner UNA sola vez con la cámara trasera elegida.
         (async () => {
             try {
+                // Paso 1: desbloquear permiso y nombres de cámara
+                try {
+                    const s = await navigator.mediaDevices.getUserMedia({
+                        video: { facingMode: { ideal: 'environment' } }
+                    });
+                    s.getTracks().forEach(t => t.stop());
+                } catch (permErr) {
+                    console.warn('⚠️ No se pudo pre-pedir permiso de cámara:', permErr);
+                }
+
+                // Paso 2: enumerar (ahora con nombres) y elegir la trasera
                 camaras = await Html5Qrcode.getCameras();
                 if (!camaras || camaras.length === 0) throw new Error("Sin cámaras");
-                const idxTrasera = camaras.findIndex(c => /back|rear|trasera|environment/i.test(c.label));
-                camaraActual = idxTrasera >= 0 ? idxTrasera : camaras.length - 1;
-                await scanner.start(camaras[camaraActual].id, config, onScan, () => {});
+
+                // Descartar las que se identifiquen como selfie/frontal
+                const noFrontales = camaras.filter(c => !/front|frontal|selfie|user|facetime/i.test(c.label || ''));
+                const candidatas = noFrontales.length > 0 ? noFrontales : camaras;
+                // Preferir la que diga back/rear/trasera/environment
+                const idxTrasera = candidatas.findIndex(c => /back|rear|trasera|environment/i.test(c.label || ''));
+                const elegida = idxTrasera >= 0 ? candidatas[idxTrasera] : candidatas[candidatas.length - 1];
+                camaraActual = camaras.indexOf(elegida);
+
+                await scanner.start(elegida.id, config, onScan, () => {});
                 scannerActivo = true;
-                console.log("✅ Escáner activo:", camaras[camaraActual].label || camaras[camaraActual].id);
+                console.log("✅ Escáner activo:", elegida.label || elegida.id);
             } catch (e1) {
                 // Respaldo: si no se pudo enumerar, intentar con facingMode
-                console.warn("⚠️ getCameras falló, probando facingMode...", e1);
+                console.warn("⚠️ Selección de cámara falló, probando facingMode...", e1);
                 try {
                     await scanner.start({ facingMode: "environment" }, config, onScan, () => {});
                     scannerActivo = true;
