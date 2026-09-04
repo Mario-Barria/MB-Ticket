@@ -712,9 +712,11 @@
                 </div>
                 <div style="margin-bottom:22px;">
                     <h2 style="margin:0 0 14px;font-size:17px;font-weight:600;color:#00aaff;">🔒 Acceso Restringido</h2>
-                    <input type="password" id="inputPassword" placeholder="Contraseña de acceso" autocomplete="off"
+                    <input type="text" id="inputApiUrl" placeholder="Servidor" value="https://clubes.mbticket.com.ar" autocomplete="off"
+                        style="width:100%;padding:12px;border:1px solid #4a4a5a;border-radius:10px;background:rgba(0,0,0,0.5);color:#e0e0e0;font-size:14px;margin-bottom:10px;box-sizing:border-box;">
+                    <input type="text" id="inputPassword" placeholder="Clave API del club" autocomplete="off"
                         style="width:100%;padding:14px;border:1px solid #4a4a5a;border-radius:10px;background:rgba(0,0,0,0.5);color:#e0e0e0;font-size:16px;margin-bottom:14px;box-sizing:border-box;">
-                    <button onclick="initAudio();validarAcceso()"
+                    <button onclick="initAudio();validarAcceso()" id="btnIngresar"
                         style="width:100%;background:#00aaff;color:#000;border:none;padding:14px;border-radius:10px;font-weight:800;font-size:16px;cursor:pointer;">
                         Ingresar al Sistema
                     </button>
@@ -724,7 +726,7 @@
                     <p style="margin:0 0 4px;font-size:11px;color:#9a9aab;">📞 +54 9 297 403-8368</p>
                     <p style="margin:0;font-size:11px;color:#9a9aab;">✉️ soporte@mbticket.com</p>
                 </div>
-                <div id="intentosInfo" style="margin-top:14px;font-size:12px;color:#9a9aab;">Intentos restantes: 3</div>
+                <div id="intentosInfo" style="margin-top:14px;font-size:12px;color:#9a9aab;">Pegue la clave API que figura en el panel del club</div>
             </div>
         </div>`;
         setTimeout(() => document.getElementById('inputPassword').focus(), 100);
@@ -735,18 +737,53 @@
 
     let intentosRestantes = 3;
 
-    function validarAcceso() {
+    // Valida la clave API del club directamente contra el servidor
+    // (api/actividades.php devuelve nombre y color del club si la clave es válida).
+    // Se mantienen las claves demo antiguas como respaldo offline.
+    async function validarAcceso() {
         const input = document.getElementById('inputPassword');
-        const clubConfig = CONFIG_CLUBES[input.value];
-        if (clubConfig) {
+        const urlInput = document.getElementById('inputApiUrl');
+        const clave = input.value.trim();
+        const url = urlInput.value.trim().replace(/\/+$/, '') || 'https://clubes.mbticket.com.ar';
+        const info = document.getElementById('intentosInfo');
+
+        // Respaldo: claves demo fijas (modo sin servidor)
+        const clubDemo = CONFIG_CLUBES[clave];
+        if (clubDemo) {
+            localStorage.setItem('acceso_autorizado', 'true');
+            localStorage.setItem('club_config', JSON.stringify(clubDemo));
+            location.reload();
+            return;
+        }
+
+        // Validación online de la clave API del club
+        document.getElementById('btnIngresar').disabled = true;
+        info.textContent = '⏳ Verificando clave con el servidor...';
+        info.style.color = '#9a9aab';
+        try {
+            const resp = await fetch(`${url}/api/actividades.php?key=${encodeURIComponent(clave)}`);
+            const data = await resp.json();
+            if (data.error) throw new Error(data.error);
+            const clubConfig = {
+                nombre: data.club,
+                colores: { primario: data.color || '#00aaff', secundario: '#1a1a24' },
+                logo: data.logo || ''
+            };
             localStorage.setItem('acceso_autorizado', 'true');
             localStorage.setItem('club_config', JSON.stringify(clubConfig));
+            // Dejar el modo online ya configurado con esta clave
+            localStorage.setItem('mbt_online', JSON.stringify({
+                url: url, key: clave, club: data.club,
+                actividadId: 0, actividadNombre: '— Acceso general (sin actividad) —'
+            }));
+            localStorage.removeItem('socios'); localStorage.removeItem('entradasWeb'); localStorage.removeItem('abonosWeb');
             location.reload();
-        } else {
+        } catch (e) {
+            document.getElementById('btnIngresar').disabled = false;
             intentosRestantes--;
             if (intentosRestantes > 0) {
-                document.getElementById('intentosInfo').textContent =
-                    `❌ Contraseña incorrecta. Intentos restantes: ${intentosRestantes}`;
+                info.textContent = `❌ Clave inválida o sin conexión. Intentos restantes: ${intentosRestantes}`;
+                info.style.color = '#f44336';
                 input.value = '';
                 input.focus();
             } else {
@@ -871,46 +908,33 @@
             procesarQR(decodedText);
         };
 
-        scanner.start({ facingMode: "environment" }, config, onScan, () => {})
-            .then(async () => {
+        // Elegir la cámara trasera ANTES de abrir (evita el "parpadeo" de
+        // abrir la frontal y tener que cambiar). Estrategia: listar las
+        // cámaras, preferir la trasera por nombre; si no hay pistas, usar la
+        // ÚLTIMA de la lista (en Android la trasera suele ser la última).
+        // Un solo start(): nunca se abre la frontal primero.
+        (async () => {
+            try {
+                camaras = await Html5Qrcode.getCameras();
+                if (!camaras || camaras.length === 0) throw new Error("Sin cámaras");
+                const idxTrasera = camaras.findIndex(c => /back|rear|trasera|environment/i.test(c.label));
+                camaraActual = idxTrasera >= 0 ? idxTrasera : camaras.length - 1;
+                await scanner.start(camaras[camaraActual].id, config, onScan, () => {});
                 scannerActivo = true;
-                console.log("✅ Escáner activo (cámara trasera)");
-                // Verificar que NO haya abierto la frontal (algunos Android la
-                // devuelven como "environment"). Si el video dice "user",
-                // cambiamos a la trasera explícita.
+                console.log("✅ Escáner activo:", camaras[camaraActual].label || camaras[camaraActual].id);
+            } catch (e1) {
+                // Respaldo: si no se pudo enumerar, intentar con facingMode
+                console.warn("⚠️ getCameras falló, probando facingMode...", e1);
                 try {
-                    camaras = await Html5Qrcode.getCameras();
-                    const video = document.querySelector('#reader video');
-                    const label = video && video.srcObject && video.srcObject.getVideoTracks()[0]
-                        ? video.srcObject.getVideoTracks()[0].label : '';
-                    const idxTrasera = camaras.findIndex(c => /back|rear|trasera|environment|0\)/i.test(c.label));
-                    if (/front|frontal|user|selfie/i.test(label) && idxTrasera >= 0 && camaras.length > 1) {
-                        console.warn('⚠️ Abrió la frontal, cambiando a trasera:', label);
-                        await scanner.stop(); scannerActivo = false; scanner.clear();
-                        document.getElementById('reader').innerHTML = '';
-                        scanner = crearScanner();
-                        camaraActual = idxTrasera;
-                        await scanner.start(camaras[camaraActual].id, config, onScan, () => {});
-                        scannerActivo = true;
-                    }
-                } catch (verr) { /* si no se puede verificar, sigue como está */ }
-            })
-            .catch(async (err) => {
-                console.warn("⚠️ facingMode falló, buscando cámaras...", err);
-                try {
-                    camaras = await Html5Qrcode.getCameras();
-                    if (!camaras || camaras.length === 0) throw new Error("Sin cámaras");
-                    // Preferir la trasera por nombre; si no, la última de la lista
-                    const idx = camaras.findIndex(c => /back|rear|trasera|environment/i.test(c.label));
-                    camaraActual = idx >= 0 ? idx : camaras.length - 1;
-                    await scanner.start(camaras[camaraActual].id, config, onScan, () => {});
+                    await scanner.start({ facingMode: "environment" }, config, onScan, () => {});
                     scannerActivo = true;
-                    console.log("✅ Escáner activo:", camaras[camaraActual].label);
+                    console.log("✅ Escáner activo (facingMode)");
                 } catch (e2) {
                     console.error("❌ No se pudo iniciar la cámara:", e2);
                     mostrarErrorCamara();
                 }
-            });
+            }
+        })();
     }
 
     // Escáner con soporte para QR y códigos de barra de carnets
