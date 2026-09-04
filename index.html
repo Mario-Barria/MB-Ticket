@@ -566,22 +566,24 @@
                     <div class="panel">
                         <h3 class="panel-title">Conexión con clubes.mbticket.com.ar</h3>
                         <p style="font-size:13px;color:#9a9aab;line-height:1.6">
-                            Con la conexión online, cada escaneo consulta la base del club en vivo:<br>
-                            cuota al día, apto físico, suspensión e historial quedan registrados solos.<br>
-                            La clave API la da el club (Panel → Configuración → Conexión del tótem).
+                            Cada escaneo o búsqueda manual consulta la base del club en vivo:<br>
+                            cuota al día, apto físico, suspensión e historial quedan registrados solos.
+                        </p>
+                        <p style="font-size:12px;color:#9a9aab;line-height:1.5;background:rgba(0,170,255,0.08);border:1px solid rgba(0,170,255,0.25);border-radius:8px;padding:8px 10px;">
+                            ℹ️ Esto ya queda configurado al ingresar con la clave API.
+                            Use esta sección <strong>solo si quiere cambiar la puerta/actividad</strong> de este tótem.
                         </p>
                         <label style="display:block;margin:12px 0 4px;font-size:13px;color:#9a9aab">Dirección del sistema</label>
                         <input type="text" id="apiUrl" value="https://clubes.mbticket.com.ar" style="width:100%;padding:12px;border:1px solid #4a4a5a;border-radius:10px;background:rgba(0,0,0,0.4);color:#e0e0e0;font-size:15px;">
                         <label style="display:block;margin:12px 0 4px;font-size:13px;color:#9a9aab">Clave API del club</label>
                         <input type="text" id="apiKey" placeholder="Pegue aquí la clave de 40 caracteres" style="width:100%;padding:12px;border:1px solid #4a4a5a;border-radius:10px;background:rgba(0,0,0,0.4);color:#e0e0e0;font-size:15px;font-family:monospace;">
-                        <button class="action" id="conectarBtn" style="background:#00aaff;color:#000;">🔗 Conectar y traer actividades</button>
+                        <button class="action" id="conectarBtn" style="background:#00aaff;color:#000;">🔗 Traer actividades</button>
                         <div id="onlineSetup" style="display:none;margin-top:12px;">
                             <label style="display:block;margin:0 0 4px;font-size:13px;color:#9a9aab">Puerta / actividad de este tótem</label>
                             <select id="apiActividad" style="width:100%;padding:12px;border:1px solid #4a4a5a;border-radius:10px;background:rgba(0,0,0,0.4);color:#e0e0e0;font-size:15px;"></select>
-                            <button class="action" id="guardarOnlineBtn" style="background:#4caf50;">✅ Activar modo online</button>
+                            <button class="action" id="guardarOnlineBtn" style="background:#4caf50;">✅ Guardar puerta</button>
                         </div>
                         <p id="onlineStatus" class="file-status"></p>
-                        <button class="action" id="desconectarBtn" style="background:#f44336;display:none;">Desactivar modo online (volver a CSV)</button>
                     </div>
                 </div>
 
@@ -802,6 +804,45 @@
                 <p style="margin:0;font-size:12px;color:#9a9aab;">📞 +54 9 297 403-8368 · ✉️ soporte@mbticket.com</p>
             </div>
         </div>`;
+    }
+
+    // ---------- Ingreso directo por link (WhatsApp) ----------
+    // El link lleva ?k=CLAVE_API (y opcionalmente &u=servidor):
+    // valida la clave contra el servidor y entra sin pedir nada.
+    const paramsUrl = new URLSearchParams(location.search);
+    const linkKey = paramsUrl.get('k');
+    const linkSrv = (paramsUrl.get('u') || 'https://clubes.mbticket.com.ar').replace(/\/+$/, '');
+
+    if (linkKey) {
+        // Mostrar un cartel breve mientras valida
+        document.body.innerHTML = `
+        <div style="display:flex;justify-content:center;align-items:center;height:100vh;height:100dvh;background:#000;font-family:'Inter',sans-serif;color:#e0e0e0;text-align:center;">
+            <div><div style="font-size:46px;margin-bottom:10px;">🎫</div>
+            <p style="color:#9a9aab;">Conectando con el club...</p></div>
+        </div>`;
+        (async () => {
+            try {
+                const resp = await fetch(`${linkSrv}/api/actividades.php?key=${encodeURIComponent(linkKey)}`);
+                const data = await resp.json();
+                if (data.error) throw new Error(data.error);
+                localStorage.setItem('acceso_autorizado', 'true');
+                localStorage.setItem('club_config', JSON.stringify({
+                    nombre: data.club,
+                    colores: { primario: data.color || '#00aaff', secundario: '#1a1a24' },
+                    logo: data.logo || ''
+                }));
+                localStorage.setItem('mbt_online', JSON.stringify({
+                    url: linkSrv, key: linkKey, club: data.club,
+                    actividadId: 0, actividadNombre: '— Acceso general (sin actividad) —'
+                }));
+                localStorage.removeItem('socios'); localStorage.removeItem('entradasWeb'); localStorage.removeItem('abonosWeb');
+            } catch (e) {
+                console.warn('⚠️ Link inválido o sin conexión:', e);
+            }
+            // Recargar sin los parámetros en la URL
+            location.replace(location.pathname);
+        })();
+        throw new Error("Ingreso por link en curso");
     }
 
     if (!verificarAcceso()) {
@@ -1045,17 +1086,14 @@
     function actualizarBadgeOnline() {
         const badge = document.getElementById('onlineBadge');
         const status = document.getElementById('onlineStatus');
-        const btnOff = document.getElementById('desconectarBtn');
         if (onlineCfg && onlineCfg.key) {
             badge.style.display = 'inline-block';
-            btnOff.style.display = 'block';
-            status.textContent = `✅ Modo online activo — ${onlineCfg.club} · Puerta: ${onlineCfg.actividadNombre}`;
+            status.textContent = `✅ Conectado — ${onlineCfg.club} · Puerta: ${onlineCfg.actividadNombre}`;
             status.style.color = '#4caf50';
             document.getElementById('apiKey').value = onlineCfg.key;
             document.getElementById('apiUrl').value = onlineCfg.url;
         } else {
             badge.style.display = 'none';
-            btnOff.style.display = 'none';
         }
     }
 
@@ -1605,16 +1643,6 @@
         actualizarBadgeOnline();
         cerrarAdmin();
         mostrarResultado('success', 'MODO ONLINE', `Conectado a ${onlineCfg.club}<br>Puerta: ${onlineCfg.actividadNombre}`);
-    });
-
-    document.getElementById('desconectarBtn').addEventListener('click', () => {
-        if (confirm('¿Volver al modo offline (listado CSV)?')) {
-            onlineCfg = null;
-            localStorage.removeItem('mbt_online');
-            actualizarBadgeOnline();
-            document.getElementById('onlineStatus').textContent = 'Modo online desactivado.';
-            document.getElementById('onlineStatus').style.color = '#9a9aab';
-        }
     });
 
     actualizarBadgeOnline();
