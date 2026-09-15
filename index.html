@@ -1128,8 +1128,12 @@
 
     function mostrarResultadoOnline(r) {
         const nombre = (r.apellido && r.nombre) ? `${r.apellido}, ${r.nombre}` : (r.nombre || '');
+        // Foto del socio (viene del servidor si la cargaron en el padrón o el portal)
+        const fotoHTML = r.foto
+            ? `<img src="${r.foto}" alt="" style="width:130px;height:130px;object-fit:cover;border-radius:18px;border:3px solid rgba(255,255,255,.35);margin:0 auto 12px;display:block;">`
+            : '';
         const detalle = nombre
-            ? `${nombre}<br>DNI: <span class="mono">${r.dni || ''}</span>${r.categoria ? ' · ' + r.categoria : ''}<br><small style="font-size:0.6em;opacity:0.85;">${r.mensaje || ''}</small>`
+            ? fotoHTML + `${nombre}<br>DNI: <span class="mono">${r.dni || ''}</span>${r.categoria ? ' · ' + r.categoria : ''}<br><small style="font-size:0.6em;opacity:0.85;">${r.mensaje || ''}</small>`
             : (r.mensaje || '');
         switch (r.resultado) {
             case 'ok':
