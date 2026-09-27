@@ -403,6 +403,7 @@
         .tag.web { background: rgba(76,175,80,0.2); color: var(--ok); }
         .tag.abono { background: rgba(255,193,7,0.2); color: var(--warn); }
         .tag.manual { background: rgba(255,255,255,0.12); color: var(--text2); }
+        .tag.entrada { background: rgba(156,39,176,0.28); color: #ce93d8; }
 
         .instrucciones {
             margin-top: 14px;
@@ -501,7 +502,7 @@
             </div>
             <div id="adminBody">
                 <div class="tabs">
-                    <div class="tab" data-tab="socios" style="display:none">Socios</div>
+                    <div class="tab" data-tab="socios">📋 Listado CSV</div>
                     <div class="tab" data-tab="web" style="display:none">Entradas Web</div>
                     <div class="tab" data-tab="abonos" style="display:none">Abonos/Invita</div>
                     <div class="tab" data-tab="manual">🔍 Ingreso Manual</div>
@@ -511,11 +512,17 @@
 
                 <div id="socios" class="tab-content">
                     <div class="panel">
-                        <h3 class="panel-title">Listado de Socios (CSV: Nombre;Apellido;DNI)</h3>
+                        <h3 class="panel-title">Listado offline (CSV: Nombre;Apellido;DNI — también acepta comas)</h3>
                         <div class="file-upload">
                             <label for="csvFile">📂 Seleccionar listado de socios</label>
                             <input type="file" id="csvFile" accept=".csv,.txt">
                             <p id="csvStatus" class="file-status">Esperando archivo CSV...</p>
+                        </div>
+                        <div class="instrucciones">
+                            • Este listado es el <strong>respaldo sin internet</strong>: si el teléfono pierde conexión, el escaneo sigue verificando contra este archivo (modo offline).<br>
+                            • También sirve para eventos <strong>100% offline</strong>: cargás el CSV, escaneás carnets impresos (QR = DNI o CUIT) y al final generás el informe desde «Registros e Informe».<br>
+                            • Si el QR es el CUIT de una empresa, ponga ese CUIT en la columna DNI del CSV.<br>
+                            • El listado queda guardado en el teléfono aunque cierre la página.
                         </div>
                     </div>
                 </div>
@@ -590,6 +597,10 @@
                 <div id="registros" class="tab-content">
                     <div class="panel">
                         <h3 class="panel-title">Registros de Hoy</h3>
+                        <p style="font-size:12px;color:#9a9aab;line-height:1.5;margin-top:0;">
+                            En modo online, esta lista y el contador «ingresos hoy» muestran <strong>solo lo que escaneó ESTE teléfono</strong>.
+                            El informe consolidado de todas las puertas está en el panel web del club (Eventos → exportar, y Reportes).
+                        </p>
                         <div id="registros-list"><p>No hay registros aún.</p></div>
                         <button class="action" id="exportBtn">📊 Generar Informe (CSV)</button>
                         <button class="action" id="clearBtn">🗑️ Limpiar Registros de Hoy</button>
@@ -1159,12 +1170,33 @@
         }
     }
 
+    // Anota en el registro LOCAL los ingresos OK del modo online:
+    // hace subir el contador «ingresos hoy» de este teléfono y habilita
+    // su informe CSV. (El registro oficial consolidado está en el servidor.)
+    function registrarOnlineLocal(r) {
+        if (!r || r.resultado !== 'ok') return;
+        const nombre = (r.apellido && r.nombre) ? `${r.apellido}, ${r.nombre}` : (r.nombre || 'Ingreso');
+        const msg = r.mensaje || '';
+        let tipo = 'carnet';
+        if (r.categoria === '🎟️ Entrada' || msg.indexOf('ENTRADA') === 0) tipo = 'entrada';
+        else if (msg.indexOf('ABONADO') === 0) tipo = 'abono';
+        registros.push({
+            dni: limpiarDNI(r.dni || ''),
+            nombre: nombre,
+            fecha: new Date().toISOString(),
+            tipo: tipo
+        });
+        guardarRegistros();
+        actualizarRegistros();
+    }
+
     // ---------- Procesar QR (decide online u offline) ----------
     async function procesarQR(qrContent) {
         if (onlineCfg && onlineCfg.key && navigator.onLine !== false) {
             try {
                 const r = await consultarAccesoOnline(qrContent.trim());
                 mostrarResultadoOnline(r);
+                registrarOnlineLocal(r);
                 return;
             } catch (e) {
                 console.warn('⚠️ Sin conexión con el servidor, usando modo offline:', e);
@@ -1202,6 +1234,7 @@
         const yaRegistrado = registros.find(r => r.dni === socio.dni && esHoyISO(r.fecha));
         if (yaRegistrado) {
             const tipoTxt = yaRegistrado.tipo === 'web' ? 'ENTRADA WEB' :
+                            yaRegistrado.tipo === 'entrada' ? 'ENTRADA' :
                             yaRegistrado.tipo === 'abono' ? 'ABONADO' :
                             yaRegistrado.tipo === 'manual' ? 'MANUAL' : 'CARNET';
             const hora = new Date(yaRegistrado.fecha).toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit' });
@@ -1234,8 +1267,10 @@
                 let content = e.target.result;
                 if (content.charCodeAt(0) === 0xFEFF) content = content.slice(1);
                 const lines = content.split(/\r?\n/).filter(l => l.trim() !== '');
+                // Acepta separador ";" (Excel en español) o "," (CSV internacional)
+                const delim = (lines[0] || '').includes(';') ? ';' : ',';
                 const lista = lines.map(line => {
-                    const partes = line.split(';');
+                    const partes = line.split(delim);
                     if (partes.length < 3) return null;
                     const dniLimpio = limpiarDNI(partes[2]);
                     if (!dniLimpio) return null; // salta encabezados y líneas inválidas
@@ -1485,6 +1520,7 @@
             try {
                 const r = await consultarAccesoOnline('', dniSel);
                 mostrarResultadoOnline(r);
+                registrarOnlineLocal(r);
             } catch (e) {
                 mostrarResultado('error', 'SIN CONEXIÓN', 'No se pudo consultar al servidor');
             }
@@ -1494,6 +1530,7 @@
         if (yaIngresado) {
             const socioDup = selectedSocio;
             const tipoTxt = yaIngresado.tipo === 'web' ? 'ENTRADA WEB' :
+                            yaIngresado.tipo === 'entrada' ? 'ENTRADA' :
                             yaIngresado.tipo === 'abono' ? 'ABONADO' :
                             yaIngresado.tipo === 'manual' ? 'MANUAL' : 'CARNET';
             const hora = new Date(yaIngresado.fecha).toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit' });
@@ -1542,7 +1579,7 @@
             ? [...registrosHoy].reverse().map(r => `
                 <div class="registro-item">
                     <span>${r.nombre} · DNI ${r.dni}
-                        <span class="tag ${r.tipo}">${r.tipo === 'web' ? 'Web' : r.tipo === 'abono' ? 'Abono' : r.tipo === 'manual' ? 'Manual' : 'Carnet'}</span>
+                        <span class="tag ${r.tipo}">${r.tipo === 'web' ? 'Web' : r.tipo === 'entrada' ? 'Entrada' : r.tipo === 'abono' ? 'Abono' : r.tipo === 'manual' ? 'Manual' : 'Carnet'}</span>
                     </span>
                     <span class="hora">${new Date(r.fecha).toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit' })}</span>
                 </div>`).join('')
@@ -1552,7 +1589,7 @@
     document.getElementById('exportBtn').addEventListener('click', function () {
         const hoy = new Date();
         const registrosHoy = registros.filter(r => esHoyISO(r.fecha));
-        const tipoTxt = t => t === 'web' ? 'Entrada Web' : t === 'abono' ? 'Abono/Invita' : t === 'manual' ? 'Manual' : 'Carnet';
+        const tipoTxt = t => t === 'web' ? 'Entrada Web' : t === 'entrada' ? 'Entrada' : t === 'abono' ? 'Abono/Invita' : t === 'manual' ? 'Manual' : 'Carnet';
         let csv = "\uFEFFFecha,Hora,Nombre,DNI,Tipo\n";
         registrosHoy.forEach(r => {
             const f = new Date(r.fecha);
@@ -1603,7 +1640,8 @@
     // ---------- Inicialización ----------
     window.addEventListener('beforeunload', guardarRegistros);
 
-    // (Modo clubes: los listados CSV ya no se usan — todo se consulta online)
+    // (Modo clubes: el escaneo consulta online; el listado CSV queda como
+    //  respaldo offline y para eventos que se manejen 100% con listado)
 
     // ---------- Configuración del modo online ----------
     document.getElementById('conectarBtn').addEventListener('click', async () => {
@@ -1641,9 +1679,9 @@
             actividadNombre: sel.options[sel.selectedIndex].text
         };
         localStorage.setItem('mbt_online', JSON.stringify(onlineCfg));
-            // En modo clubes los listados CSV no se usan: limpiar la memoria vieja
-            localStorage.removeItem('socios'); localStorage.removeItem('entradasWeb'); localStorage.removeItem('abonosWeb');
-            socios = []; entradasWeb = []; abonosWeb = [];
+        // El listado CSV (si se cargó) NO se borra: queda como respaldo offline
+        // por si el teléfono pierde internet en medio del evento.
+        entradasWeb = []; abonosWeb = [];
         actualizarBadgeOnline();
         cerrarAdmin();
         mostrarResultado('success', 'MODO ONLINE', `Conectado a ${onlineCfg.club}<br>Puerta: ${onlineCfg.actividadNombre}`);
